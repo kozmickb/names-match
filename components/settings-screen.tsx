@@ -14,7 +14,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { RefreshCw, LogOut, Trash2 } from "lucide-react";
+import { RefreshCw, LogOut, Trash2, Shuffle, ListOrdered } from "lucide-react";
+import { timeAgo } from "@/lib/time";
 
 type Stats = {
   totalNames: number;
@@ -23,24 +24,55 @@ type Stats = {
   totalMatches: number;
 };
 
+type ShuffleState = { enabled: boolean; seed: number; updatedAt: string | null };
+
 export function SettingsScreen() {
   const { user, setUser } = useUser();
   const router = useRouter();
   const [stats, setStats] = useState<Stats | null>(null);
+  const [shuffle, setShuffle] = useState<ShuffleState | null>(null);
+  const [shuffleBusy, setShuffleBusy] = useState(false);
   const [confirm, setConfirm] = useState(false);
   const [resetting, setResetting] = useState(false);
 
   const load = useCallback(async () => {
     try {
-      const r = await apiFetch("/api/stats");
-      if (!r.ok) return;
-      setStats((await r.json()) as Stats);
+      const [statsRes, shuffleRes] = await Promise.all([
+        apiFetch("/api/stats"),
+        apiFetch("/api/shuffle"),
+      ]);
+      if (statsRes.ok) setStats((await statsRes.json()) as Stats);
+      if (shuffleRes.ok) setShuffle((await shuffleRes.json()) as ShuffleState);
     } catch {}
   }, []);
 
   useEffect(() => {
     load();
   }, [load]);
+
+  const changeShuffle = async (enabled: boolean) => {
+    setShuffleBusy(true);
+    try {
+      const r = await apiFetch("/api/shuffle", {
+        method: "POST",
+        body: JSON.stringify({ enabled }),
+      });
+      if (!r.ok) throw new Error();
+      const next = (await r.json()) as ShuffleState;
+      setShuffle(next);
+      toast.success(
+        enabled
+          ? shuffle?.enabled
+            ? "Re-shuffled for both of you."
+            : "Shuffle on for both of you."
+          : "Back to alphabetical order."
+      );
+    } catch {
+      toast.error("Could not change order.");
+    } finally {
+      setShuffleBusy(false);
+    }
+  };
 
   const reset = async () => {
     setResetting(true);
@@ -96,6 +128,56 @@ export function SettingsScreen() {
         <Stat label="Swiped by you" value={stats?.swipedByMe} />
         <Stat label="Liked by you" value={stats?.likedByMe} />
         <Stat label="Matches" value={stats?.totalMatches} accent />
+      </section>
+
+      <section className="mt-5 rounded-3xl border border-stone-200/70 bg-white/70 p-5">
+        <div className="flex items-center gap-2 text-stone-800 font-medium">
+          {shuffle?.enabled ? <Shuffle size={16} /> : <ListOrdered size={16} />}
+          Order
+        </div>
+        <p className="mt-2 text-sm text-stone-600">
+          {shuffle?.enabled
+            ? "Shuffled. You and your partner see the same random order."
+            : "Alphabetical. You and your partner see the same A to Z order."}
+        </p>
+        {shuffle?.enabled && shuffle?.updatedAt && (
+          <p className="mt-1 text-xs text-stone-500">
+            Last shuffled {timeAgo(shuffle.updatedAt)}
+          </p>
+        )}
+        <div className="mt-3 flex gap-2">
+          {shuffle?.enabled ? (
+            <>
+              <Button
+                variant="outline"
+                onClick={() => changeShuffle(true)}
+                disabled={shuffleBusy}
+                className="flex-1"
+              >
+                <Shuffle size={14} />
+                Re-shuffle
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => changeShuffle(false)}
+                disabled={shuffleBusy}
+                className="flex-1"
+              >
+                <ListOrdered size={14} />
+                Use A to Z
+              </Button>
+            </>
+          ) : (
+            <Button
+              onClick={() => changeShuffle(true)}
+              disabled={shuffleBusy}
+              className="w-full bg-amber-500 hover:bg-amber-600 text-white"
+            >
+              <Shuffle size={14} />
+              Shuffle names
+            </Button>
+          )}
+        </div>
       </section>
 
       <section className="mt-5 rounded-3xl border border-rose-200 bg-rose-50/70 p-5">

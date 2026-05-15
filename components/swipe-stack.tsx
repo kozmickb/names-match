@@ -18,7 +18,8 @@ const palettes = [
   "from-orange-200 via-amber-50 to-rose-100",
 ];
 
-const SWIPE_THRESHOLD = 120;
+const SWIPE_THRESHOLD = 90;
+const SWIPE_VELOCITY = 450;
 
 function vibrate(ms: number) {
   if (typeof navigator !== "undefined" && "vibrate" in navigator) {
@@ -31,6 +32,7 @@ function vibrate(ms: number) {
 export function SwipeStack() {
   const [queue, setQueue] = useState<NameItem[]>([]);
   const [total, setTotal] = useState<number | null>(null);
+  const [shuffled, setShuffled] = useState(false);
   const [loading, setLoading] = useState(true);
   const [exhausted, setExhausted] = useState(false);
   const [matchName, setMatchName] = useState<NameItem | null>(null);
@@ -43,8 +45,9 @@ export function SwipeStack() {
     try {
       const r = await apiFetch("/api/names?limit=30");
       if (!r.ok) throw new Error("failed");
-      const j = (await r.json()) as { names: NameItem[]; total: number };
+      const j = (await r.json()) as { names: NameItem[]; total: number; shuffled: boolean };
       setTotal(j.total);
+      setShuffled(j.shuffled);
       setQueue((q) => {
         const seen = new Set(q.map((n) => n.id));
         const merged = [...q];
@@ -111,13 +114,20 @@ export function SwipeStack() {
     <div className="flex-1 flex flex-col px-5 pt-6 pb-2 min-h-0">
       <header className="text-center mb-4">
         <h1 className="font-serif text-3xl text-stone-800">Names Match</h1>
-        <p className="text-xs text-stone-500 mt-1">
-          {total !== null
-            ? exhausted && queue.length === 0
-              ? "You have seen them all."
-              : `${total} names total`
-            : "Loading"}
-        </p>
+        <div className="mt-1 flex items-center justify-center gap-2 text-xs text-stone-500">
+          <span>
+            {total !== null
+              ? exhausted && queue.length === 0
+                ? "You have seen them all."
+                : `${total} names total`
+              : "Loading"}
+          </span>
+          {shuffled && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-amber-200/70 text-amber-800 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider">
+              Shuffled
+            </span>
+          )}
+        </div>
       </header>
 
       <div className="relative flex-1 flex items-center justify-center min-h-0">
@@ -173,9 +183,9 @@ function FrontCard({
   palette: string;
 }) {
   const x = useMotionValue(0);
-  const rotate = useTransform(x, [-200, 200], [-15, 15]);
-  const likeOpacity = useTransform(x, [40, 140], [0, 1]);
-  const passOpacity = useTransform(x, [-140, -40], [1, 0]);
+  const rotate = useTransform(x, [-200, 200], [-12, 12]);
+  const likeOpacity = useTransform(x, [30, 100], [0, 1]);
+  const passOpacity = useTransform(x, [-100, -30], [1, 0]);
 
   const fly = (direction: "like" | "pass") => {
     onSwipe(item, direction);
@@ -184,16 +194,18 @@ function FrontCard({
   return (
     <motion.div
       drag="x"
-      dragElastic={0.6}
-      dragMomentum={false}
+      dragElastic={0.18}
+      dragSnapToOrigin
+      dragTransition={{ bounceStiffness: 600, bounceDamping: 28, power: 0.15, timeConstant: 200 }}
       style={{ x, rotate }}
-      initial={{ scale: 0.94, opacity: 0, y: 8 }}
+      initial={{ scale: 0.95, opacity: 0, y: 6 }}
       animate={{ scale: 1, opacity: 1, y: 0 }}
-      exit={{ x: x.get() < 0 ? -500 : 500, opacity: 0, transition: { duration: 0.28 } }}
+      transition={{ type: "spring", stiffness: 380, damping: 30, mass: 0.6 }}
+      exit={{ x: x.get() < 0 ? -600 : 600, opacity: 0, transition: { duration: 0.22, ease: "easeOut" } }}
       onDragEnd={(_, info) => {
-        if (info.offset.x > SWIPE_THRESHOLD || info.velocity.x > 600) {
+        if (info.offset.x > SWIPE_THRESHOLD || info.velocity.x > SWIPE_VELOCITY) {
           fly("like");
-        } else if (info.offset.x < -SWIPE_THRESHOLD || info.velocity.x < -600) {
+        } else if (info.offset.x < -SWIPE_THRESHOLD || info.velocity.x < -SWIPE_VELOCITY) {
           fly("pass");
         }
       }}
