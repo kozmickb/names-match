@@ -37,8 +37,8 @@ export function SwipeStack() {
   const [exhausted, setExhausted] = useState(false);
   const [matchName, setMatchName] = useState<NameItem | null>(null);
   const fetchingRef = useRef(false);
-  const inflightRef = useRef(false);
   const seedRef = useRef<number | null>(null);
+  const swipedIdsRef = useRef<Set<number>>(new Set());
   const [hasSwipes, setHasSwipes] = useState(false);
   const [undoBusy, setUndoBusy] = useState(false);
 
@@ -56,7 +56,9 @@ export function SwipeStack() {
         const seen = new Set(base.map((n) => n.id));
         const merged = [...base];
         for (const n of j.names) {
-          if (!seen.has(n.id)) merged.push(n);
+          if (seen.has(n.id)) continue;
+          if (swipedIdsRef.current.has(n.id)) continue;
+          merged.push(n);
         }
         if (merged.length === 0 && j.names.length === 0) setExhausted(true);
         else setExhausted(false);
@@ -115,8 +117,8 @@ export function SwipeStack() {
 
   const handleSwipe = useCallback(
     async (item: NameItem, decision: "like" | "pass") => {
-      if (inflightRef.current) return;
-      inflightRef.current = true;
+      if (swipedIdsRef.current.has(item.id)) return;
+      swipedIdsRef.current.add(item.id);
       setQueue((q) => q.filter((n) => n.id !== item.id));
       vibrate(15);
       try {
@@ -138,16 +140,15 @@ export function SwipeStack() {
         }
       } catch {
         toast.error("Swipe did not save. Reloading.");
-        setQueue((q) => [item, ...q]);
-      } finally {
-        inflightRef.current = false;
+        swipedIdsRef.current.delete(item.id);
+        setQueue((q) => (q.some((n) => n.id === item.id) ? q : [item, ...q]));
       }
     },
     []
   );
 
   const handleUndo = useCallback(async () => {
-    if (undoBusy || inflightRef.current) return;
+    if (undoBusy) return;
     setUndoBusy(true);
     try {
       const r = await apiFetch("/api/swipe/undo", { method: "POST" });
@@ -163,6 +164,7 @@ export function SwipeStack() {
         decision: "like" | "pass";
         wasMatch: boolean;
       };
+      swipedIdsRef.current.delete(j.name.id);
       setQueue((q) => {
         if (q.some((n) => n.id === j.name.id)) return q;
         return [j.name, ...q];
