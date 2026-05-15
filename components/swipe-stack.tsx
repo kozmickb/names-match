@@ -38,8 +38,9 @@ export function SwipeStack() {
   const [matchName, setMatchName] = useState<NameItem | null>(null);
   const fetchingRef = useRef(false);
   const inflightRef = useRef(false);
+  const seedRef = useRef<number | null>(null);
 
-  const fetchMore = useCallback(async () => {
+  const fetchMore = useCallback(async (reset = false) => {
     if (fetchingRef.current) return;
     fetchingRef.current = true;
     try {
@@ -49,12 +50,14 @@ export function SwipeStack() {
       setTotal(j.total);
       setShuffled(j.shuffled);
       setQueue((q) => {
-        const seen = new Set(q.map((n) => n.id));
-        const merged = [...q];
+        const base = reset ? [] : q;
+        const seen = new Set(base.map((n) => n.id));
+        const merged = [...base];
         for (const n of j.names) {
           if (!seen.has(n.id)) merged.push(n);
         }
         if (merged.length === 0 && j.names.length === 0) setExhausted(true);
+        else setExhausted(false);
         return merged;
       });
     } catch (e) {
@@ -74,6 +77,39 @@ export function SwipeStack() {
       fetchMore();
     }
   }, [queue.length, loading, exhausted, fetchMore]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const checkSeed = async () => {
+      try {
+        const r = await apiFetch("/api/shuffle");
+        if (!r.ok) return;
+        const j = (await r.json()) as { enabled: boolean; seed: number };
+        if (cancelled) return;
+        if (seedRef.current === null) {
+          seedRef.current = j.seed;
+          return;
+        }
+        if (j.seed !== seedRef.current) {
+          seedRef.current = j.seed;
+          toast.message(j.enabled ? "Names shuffled" : "Back to A to Z", {
+            description: "Your partner changed the order.",
+            duration: 2500,
+          });
+          fetchMore(true);
+        }
+      } catch {}
+    };
+    checkSeed();
+    const id = window.setInterval(checkSeed, 15000);
+    const onFocus = () => checkSeed();
+    window.addEventListener("focus", onFocus);
+    return () => {
+      cancelled = true;
+      window.clearInterval(id);
+      window.removeEventListener("focus", onFocus);
+    };
+  }, [fetchMore]);
 
   const handleSwipe = useCallback(
     async (item: NameItem, decision: "like" | "pass") => {
