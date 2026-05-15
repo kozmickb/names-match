@@ -2,7 +2,7 @@
 
 import { motion, useMotionValue, useTransform, AnimatePresence } from "framer-motion";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Heart, X } from "lucide-react";
+import { Heart, X, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { apiFetch } from "@/components/user-provider";
 import { MatchOverlay } from "@/components/match-overlay";
@@ -39,6 +39,8 @@ export function SwipeStack() {
   const fetchingRef = useRef(false);
   const inflightRef = useRef(false);
   const seedRef = useRef<number | null>(null);
+  const [hasSwipes, setHasSwipes] = useState(false);
+  const [undoBusy, setUndoBusy] = useState(false);
 
   const fetchMore = useCallback(async (reset = false) => {
     if (fetchingRef.current) return;
@@ -126,6 +128,7 @@ export function SwipeStack() {
         const j = (await r.json()) as
           | { isMatch: true; name: NameItem }
           | { isMatch: false };
+        setHasSwipes(true);
         if (decision === "like" && j.isMatch) {
           setMatchName(j.name);
         } else {
@@ -143,12 +146,61 @@ export function SwipeStack() {
     []
   );
 
+  const handleUndo = useCallback(async () => {
+    if (undoBusy || inflightRef.current) return;
+    setUndoBusy(true);
+    try {
+      const r = await apiFetch("/api/swipe/undo", { method: "POST" });
+      if (r.status === 404) {
+        toast.message("Nothing to undo");
+        setHasSwipes(false);
+        return;
+      }
+      if (!r.ok) throw new Error();
+      const j = (await r.json()) as {
+        undone: true;
+        name: NameItem;
+        decision: "like" | "pass";
+        wasMatch: boolean;
+      };
+      setQueue((q) => {
+        if (q.some((n) => n.id === j.name.id)) return q;
+        return [j.name, ...q];
+      });
+      setExhausted(false);
+      toast.success(
+        j.wasMatch
+          ? `Brought back ${j.name.name} — match removed`
+          : `Brought back ${j.name.name}`,
+        { duration: 1800 }
+      );
+    } catch {
+      toast.error("Could not undo. Try again.");
+    } finally {
+      setUndoBusy(false);
+    }
+  }, [undoBusy]);
+
+  useEffect(() => {
+    let cancelled = false;
+    apiFetch("/api/stats")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j: { swipedByMe: number } | null) => {
+        if (cancelled || !j) return;
+        setHasSwipes(j.swipedByMe > 0);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const top = queue[0];
   const stackBelow = queue.slice(1, 3);
 
   return (
     <div className="flex-1 flex flex-col px-5 pt-6 pb-2 min-h-0">
-      <header className="text-center mb-4">
+      <header className="relative text-center mb-4">
         <h1 className="font-serif text-3xl text-stone-800">Names Match</h1>
         <div className="mt-1 flex items-center justify-center gap-2 text-xs text-stone-500">
           <span>
@@ -164,6 +216,16 @@ export function SwipeStack() {
             </span>
           )}
         </div>
+        <button
+          type="button"
+          onClick={handleUndo}
+          disabled={!hasSwipes || undoBusy}
+          aria-label="Undo last swipe"
+          className="absolute right-0 top-1 inline-flex items-center justify-center gap-1.5 h-10 min-w-[44px] px-3 rounded-full border border-stone-200 bg-white/80 backdrop-blur text-stone-700 shadow-sm text-xs font-medium active:scale-[0.96] transition disabled:opacity-40 disabled:active:scale-100"
+        >
+          <RotateCcw size={14} className={undoBusy ? "animate-spin" : ""} />
+          Undo
+        </button>
       </header>
 
       <div className="relative flex-1 flex items-center justify-center min-h-0">
