@@ -14,7 +14,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { RefreshCw, LogOut, Trash2, Shuffle, ListOrdered } from "lucide-react";
+import { RefreshCw, LogOut, Trash2, Shuffle, ListOrdered, Sparkles } from "lucide-react";
 import { timeAgo } from "@/lib/time";
 
 type Stats = {
@@ -27,13 +27,15 @@ type Stats = {
 type ShuffleState = { enabled: boolean; seed: number; updatedAt: string | null };
 
 export function SettingsScreen() {
-  const { user, setUser } = useUser();
+  const { user, setUser, surname, setSurname } = useUser();
   const router = useRouter();
   const [stats, setStats] = useState<Stats | null>(null);
   const [shuffle, setShuffle] = useState<ShuffleState | null>(null);
   const [shuffleBusy, setShuffleBusy] = useState(false);
   const [confirm, setConfirm] = useState(false);
   const [resetting, setResetting] = useState(false);
+  const [style, setStyle] = useState("");
+  const [genBusy, setGenBusy] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -49,6 +51,40 @@ export function SettingsScreen() {
   useEffect(() => {
     load();
   }, [load]);
+
+  const generate = async () => {
+    setGenBusy(true);
+    try {
+      const r = await apiFetch("/api/names/generate", {
+        method: "POST",
+        body: JSON.stringify({ count: 30, style: style || undefined }),
+      });
+      const j = (await r.json()) as
+        | { added: number; duplicates: number; generated: number }
+        | { error: string };
+      if (!r.ok || "error" in j) {
+        toast.error("error" in j ? j.error : "Generation failed.");
+        return;
+      }
+      if (j.added === 0) {
+        toast.message("No new names this time", {
+          description: `Generated ${j.generated}, all already in your list.`,
+        });
+      } else {
+        toast.success(`Added ${j.added} new name${j.added === 1 ? "" : "s"}`, {
+          description:
+            j.duplicates > 0
+              ? `${j.duplicates} were already in your list.`
+              : undefined,
+        });
+      }
+      load();
+    } catch {
+      toast.error("Could not reach the AI.");
+    } finally {
+      setGenBusy(false);
+    }
+  };
 
   const changeShuffle = async (enabled: boolean) => {
     setShuffleBusy(true);
@@ -128,6 +164,53 @@ export function SettingsScreen() {
         <Stat label="Swiped by you" value={stats?.swipedByMe} />
         <Stat label="Liked by you" value={stats?.likedByMe} />
         <Stat label="Matches" value={stats?.totalMatches} accent />
+      </section>
+
+      <section className="mt-5 rounded-3xl border border-stone-200/70 bg-white/70 p-5">
+        <div className="flex items-center gap-2 text-stone-800 font-medium">
+          <span className="font-serif text-base">Surname preview</span>
+        </div>
+        <p className="mt-2 text-sm text-stone-600">
+          Shown under each name on the card. Leave blank to hide.
+        </p>
+        <input
+          type="text"
+          value={surname}
+          onChange={(e) => setSurname(e.target.value)}
+          placeholder="e.g. Bonas"
+          maxLength={40}
+          className="mt-3 w-full rounded-2xl border border-stone-300 bg-white/80 px-4 py-3 min-h-[44px] text-sm text-stone-800 placeholder:text-stone-400 outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-200"
+        />
+        <p className="mt-2 text-xs text-stone-500">
+          Saved to this browser only.
+        </p>
+      </section>
+
+      <section className="mt-5 rounded-3xl border border-amber-200 bg-gradient-to-br from-amber-50 to-rose-50/70 p-5">
+        <div className="flex items-center gap-2 text-stone-800 font-medium">
+          <Sparkles size={16} className="text-amber-600" />
+          Add names with AI
+        </div>
+        <p className="mt-2 text-sm text-stone-600">
+          Generate 30 new names. Optionally tell it the vibe.
+        </p>
+        <input
+          type="text"
+          value={style}
+          onChange={(e) => setStyle(e.target.value)}
+          disabled={genBusy}
+          placeholder="e.g. rare Welsh, Old English, modern unisex"
+          maxLength={120}
+          className="mt-3 w-full rounded-2xl border border-stone-300 bg-white/80 px-4 py-3 min-h-[44px] text-sm text-stone-800 placeholder:text-stone-400 outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-200"
+        />
+        <Button
+          onClick={generate}
+          disabled={genBusy}
+          className="mt-3 w-full bg-amber-500 hover:bg-amber-600 text-white"
+        >
+          <Sparkles size={14} className={genBusy ? "animate-pulse" : ""} />
+          {genBusy ? "Generating…" : "Generate 30 names"}
+        </Button>
       </section>
 
       <section className="mt-5 rounded-3xl border border-stone-200/70 bg-white/70 p-5">

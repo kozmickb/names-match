@@ -4,7 +4,7 @@ import { motion, useMotionValue, useTransform, AnimatePresence } from "framer-mo
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Heart, X, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
-import { apiFetch } from "@/components/user-provider";
+import { apiFetch, useUser } from "@/components/user-provider";
 import { MatchOverlay } from "@/components/match-overlay";
 
 type NameItem = { id: number; name: string };
@@ -30,6 +30,7 @@ function vibrate(ms: number) {
 }
 
 export function SwipeStack() {
+  const { surname } = useUser();
   const [queue, setQueue] = useState<NameItem[]>([]);
   const [total, setTotal] = useState<number | null>(null);
   const [shuffled, setShuffled] = useState(false);
@@ -247,6 +248,7 @@ export function SwipeStack() {
                   item={top}
                   onSwipe={handleSwipe}
                   palette={palettes[top.id % palettes.length]}
+                  surname={surname}
                 />
               </AnimatePresence>
             </>
@@ -254,7 +256,7 @@ export function SwipeStack() {
         </div>
       </div>
 
-      <MatchOverlay name={matchName} onDismiss={() => setMatchName(null)} />
+      <MatchOverlay name={matchName} surname={surname} onDismiss={() => setMatchName(null)} />
     </div>
   );
 }
@@ -277,10 +279,12 @@ function FrontCard({
   item,
   onSwipe,
   palette,
+  surname,
 }: {
   item: NameItem;
   onSwipe: (item: NameItem, decision: "like" | "pass") => void;
   palette: string;
+  surname: string;
 }) {
   const x = useMotionValue(0);
   const rotate = useTransform(x, [-200, 200], [-12, 12]);
@@ -330,6 +334,11 @@ function FrontCard({
         <h2 className="mt-6 font-serif text-[56px] leading-none text-stone-900 break-words">
           {item.name}
         </h2>
+        {surname ? (
+          <p className="mt-3 font-serif text-2xl leading-none text-stone-600 break-words">
+            {surname}
+          </p>
+        ) : null}
       </div>
 
       <div className="px-5 pb-6 pt-2 flex items-center justify-between gap-4">

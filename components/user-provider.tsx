@@ -4,23 +4,36 @@ import { createContext, useCallback, useContext, useEffect, useState } from "rea
 import { isUserSlug, type UserSlug } from "@/lib/user";
 
 const STORAGE_KEY = "names-match.user";
+const SURNAME_KEY = "names-match.surname";
+const SURNAME_DEFAULT = "Bonas";
 
 type Ctx = {
   user: UserSlug | null;
   ready: boolean;
   setUser: (u: UserSlug | null) => void;
+  surname: string;
+  setSurname: (s: string) => void;
 };
 
-const UserCtx = createContext<Ctx>({ user: null, ready: false, setUser: () => {} });
+const UserCtx = createContext<Ctx>({
+  user: null,
+  ready: false,
+  setUser: () => {},
+  surname: SURNAME_DEFAULT,
+  setSurname: () => {},
+});
 
 export function UserProvider({ children }: { children: React.ReactNode }) {
   const [user, setUserState] = useState<UserSlug | null>(null);
+  const [surname, setSurnameState] = useState<string>(SURNAME_DEFAULT);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
     try {
       const v = window.localStorage.getItem(STORAGE_KEY);
       if (isUserSlug(v)) setUserState(v);
+      const s = window.localStorage.getItem(SURNAME_KEY);
+      if (s !== null) setSurnameState(s);
     } catch {}
     setReady(true);
   }, []);
@@ -33,7 +46,19 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     } catch {}
   }, []);
 
-  return <UserCtx.Provider value={{ user, ready, setUser }}>{children}</UserCtx.Provider>;
+  const setSurname = useCallback((s: string) => {
+    const trimmed = s.trim().slice(0, 40);
+    setSurnameState(trimmed);
+    try {
+      window.localStorage.setItem(SURNAME_KEY, trimmed);
+    } catch {}
+  }, []);
+
+  return (
+    <UserCtx.Provider value={{ user, ready, setUser, surname, setSurname }}>
+      {children}
+    </UserCtx.Provider>
+  );
 }
 
 export function useUser() {

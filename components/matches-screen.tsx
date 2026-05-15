@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Heart, Trash2 } from "lucide-react";
-import { apiFetch } from "@/components/user-provider";
+import { apiFetch, useUser } from "@/components/user-provider";
 import { timeAgo } from "@/lib/time";
 import {
   Dialog,
@@ -19,6 +19,7 @@ import { toast } from "sonner";
 type Match = { id: number; name: string; matchedAt: string };
 
 export function MatchesScreen() {
+  const { surname } = useUser();
   const [matches, setMatches] = useState<Match[] | null>(null);
   const [selected, setSelected] = useState<Match | null>(null);
   const [removing, setRemoving] = useState(false);
@@ -99,7 +100,10 @@ export function MatchesScreen() {
                     className="w-full text-left rounded-2xl border border-stone-200/70 bg-white/80 backdrop-blur p-4 flex items-center justify-between gap-4 shadow-sm active:scale-[0.99] transition"
                   >
                     <div>
-                      <div className="font-serif text-2xl text-stone-900">{m.name}</div>
+                      <div className="font-serif text-2xl text-stone-900">
+                        {m.name}
+                        {surname ? <span className="text-stone-500"> {surname}</span> : null}
+                      </div>
                       <div className="text-xs text-stone-500 mt-0.5">
                         Matched {timeAgo(m.matchedAt)}
                       </div>
@@ -120,6 +124,7 @@ export function MatchesScreen() {
               <DialogHeader>
                 <DialogTitle className="font-serif text-5xl text-center text-stone-900">
                   {selected.name}
+                  {surname ? <div className="text-3xl text-stone-500 mt-1">{surname}</div> : null}
                 </DialogTitle>
                 <DialogDescription className="text-center text-stone-600">
                   Matched {timeAgo(selected.matchedAt)}

@@ -36,10 +36,11 @@ function playChime() {
 
 type Props = {
   name: { id: number; name: string } | null;
+  surname?: string;
   onDismiss: () => void;
 };
 
-export function MatchOverlay({ name, onDismiss }: Props) {
+export function MatchOverlay({ name, surname, onDismiss }: Props) {
   const dismissRef = useRef(onDismiss);
   dismissRef.current = onDismiss;
 
@@ -92,6 +93,9 @@ export function MatchOverlay({ name, onDismiss }: Props) {
             </div>
             <p className="mt-6 text-rose-100 text-sm font-medium tracking-wide uppercase">It is a match</p>
             <h2 className="mt-2 font-serif text-6xl text-white drop-shadow-sm">{name.name}</h2>
+            {surname ? (
+              <p className="mt-1 font-serif text-2xl text-white/80">{surname}</p>
+            ) : null}
             <p className="mt-3 text-stone-200">Karo and Lucy both like this one.</p>
             <div className="mt-8 flex flex-col gap-3">
               <button
