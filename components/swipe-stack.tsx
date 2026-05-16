@@ -137,10 +137,10 @@ export function SwipeStack() {
         setHasSwipes(true);
         if (decision === "like" && j.isMatch) {
           setMatchName(j.name);
+        } else if (decision === "like") {
+          toast.success(`Liked ${item.name}`, { duration: 1300 });
         } else {
-          toast.success(decision === "like" ? `Liked ${item.name}` : `Passed ${item.name}`, {
-            duration: 1300,
-          });
+          toast.error(`Passed ${item.name}`, { duration: 1300 });
         }
       } catch {
         toast.error("Swipe did not save. Reloading.");
