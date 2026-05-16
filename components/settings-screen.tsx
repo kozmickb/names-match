@@ -14,7 +14,13 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { RefreshCw, LogOut, Trash2, Shuffle, ListOrdered, Sparkles } from "lucide-react";
+import { RefreshCw, LogOut, Trash2, Shuffle, ListOrdered, Sparkles, Bell, BellOff } from "lucide-react";
+import {
+  currentSubscription,
+  pushSupported,
+  subscribeToPush,
+  unsubscribeFromPush,
+} from "@/lib/push-client";
 import { timeAgo } from "@/lib/time";
 
 type Stats = {
@@ -35,7 +41,11 @@ export function SettingsScreen() {
   const [confirm, setConfirm] = useState(false);
   const [resetting, setResetting] = useState(false);
   const [style, setStyle] = useState("");
+  const [gender, setGender] = useState<"masculine" | "feminine" | "unisex">("masculine");
   const [genBusy, setGenBusy] = useState(false);
+  const [pushEnabled, setPushEnabled] = useState<boolean | null>(null);
+  const [pushBusy, setPushBusy] = useState(false);
+  const [pushAvailable] = useState<boolean>(() => pushSupported());
 
   const load = useCallback(async () => {
     try {
@@ -52,12 +62,60 @@ export function SettingsScreen() {
     load();
   }, [load]);
 
+  useEffect(() => {
+    if (!pushAvailable) return;
+    currentSubscription()
+      .then((sub) => setPushEnabled(!!sub))
+      .catch(() => setPushEnabled(false));
+  }, [pushAvailable]);
+
+  const togglePush = async (next: boolean) => {
+    setPushBusy(true);
+    try {
+      if (next) {
+        const vapid = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+        if (!vapid) {
+          toast.error("Push key not configured.");
+          return;
+        }
+        const sub = await subscribeToPush(vapid);
+        if (!sub) {
+          toast.error("Notification permission denied.");
+          return;
+        }
+        const payload = sub.toJSON();
+        const r = await apiFetch("/api/push/subscribe", {
+          method: "POST",
+          body: JSON.stringify(payload),
+        });
+        if (!r.ok) throw new Error();
+        setPushEnabled(true);
+        toast.success("Notifications on. We will ping you for new matches.");
+      } else {
+        const sub = await currentSubscription();
+        if (sub) {
+          await apiFetch("/api/push/subscribe", {
+            method: "DELETE",
+            body: JSON.stringify({ endpoint: sub.endpoint }),
+          });
+          await unsubscribeFromPush();
+        }
+        setPushEnabled(false);
+        toast.message("Notifications off.");
+      }
+    } catch {
+      toast.error("Could not change notifications.");
+    } finally {
+      setPushBusy(false);
+    }
+  };
+
   const generate = async () => {
     setGenBusy(true);
     try {
       const r = await apiFetch("/api/names/generate", {
         method: "POST",
-        body: JSON.stringify({ count: 30, style: style || undefined }),
+        body: JSON.stringify({ count: 30, style: style || undefined, gender }),
       });
       const j = (await r.json()) as
         | { added: number; duplicates: number; generated: number }
@@ -192,14 +250,31 @@ export function SettingsScreen() {
           Add names with AI
         </div>
         <p className="mt-2 text-sm text-stone-600">
-          Generate 30 new names. Optionally tell it the vibe.
+          Generate 30 new names. Choose a flavour and an optional vibe.
         </p>
+        <div className="mt-3 grid grid-cols-3 gap-2">
+          {(["masculine", "unisex", "feminine"] as const).map((g) => (
+            <button
+              key={g}
+              type="button"
+              onClick={() => setGender(g)}
+              disabled={genBusy}
+              className={`rounded-2xl border py-2.5 text-xs font-medium min-h-[44px] capitalize transition ${
+                gender === g
+                  ? "border-amber-500 bg-amber-100 text-amber-800"
+                  : "border-stone-300 bg-white/80 text-stone-600"
+              }`}
+            >
+              {g}
+            </button>
+          ))}
+        </div>
         <input
           type="text"
           value={style}
           onChange={(e) => setStyle(e.target.value)}
           disabled={genBusy}
-          placeholder="e.g. rare Welsh, Old English, modern unisex"
+          placeholder="Vibe (optional): rare Welsh, Old English…"
           maxLength={120}
           className="mt-3 w-full rounded-2xl border border-stone-300 bg-white/80 px-4 py-3 min-h-[44px] text-sm text-stone-800 placeholder:text-stone-400 outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-200"
         />
@@ -261,6 +336,38 @@ export function SettingsScreen() {
             </Button>
           )}
         </div>
+      </section>
+
+      <section className="mt-5 rounded-3xl border border-stone-200/70 bg-white/70 p-5">
+        <div className="flex items-center gap-2 text-stone-800 font-medium">
+          {pushEnabled ? <Bell size={16} /> : <BellOff size={16} />}
+          Notifications
+        </div>
+        <p className="mt-2 text-sm text-stone-600">
+          {pushAvailable
+            ? pushEnabled === null
+              ? "Loading…"
+              : pushEnabled
+              ? "On. We will ping you when you both match a name."
+              : "Off. Turn on to be pinged when you both match."
+            : "Your browser does not support push notifications. On iPhone, add this app to the home screen first."}
+        </p>
+        <Button
+          onClick={() => togglePush(!pushEnabled)}
+          disabled={!pushAvailable || pushBusy || pushEnabled === null}
+          className={`mt-3 w-full ${
+            pushEnabled
+              ? "bg-stone-200 hover:bg-stone-300 text-stone-800"
+              : "bg-rose-500 hover:bg-rose-600 text-white"
+          }`}
+        >
+          {pushEnabled ? <BellOff size={14} /> : <Bell size={14} />}
+          {pushBusy
+            ? "Working…"
+            : pushEnabled
+            ? "Turn off match notifications"
+            : "Turn on match notifications"}
+        </Button>
       </section>
 
       <section className="mt-5 rounded-3xl border border-rose-200 bg-rose-50/70 p-5">

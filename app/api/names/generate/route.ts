@@ -37,11 +37,17 @@ export async function POST(req: Request) {
   const count = Math.min(Math.max(Math.floor(Number(body.count) || 30), 5), 60);
   const styleRaw =
     typeof body.style === "string" ? body.style.trim().slice(0, 200) : "";
+  const genderRaw =
+    body && typeof (body as { gender?: unknown }).gender === "string"
+      ? ((body as { gender: string }).gender as string).toLowerCase()
+      : "masculine";
+  const gender: "masculine" | "feminine" | "unisex" =
+    genderRaw === "feminine" || genderRaw === "unisex" ? (genderRaw as "feminine" | "unisex") : "masculine";
 
   const client = new Anthropic({ apiKey });
 
   const systemPrompt = [
-    "You generate masculine first names for a couple choosing a baby name.",
+    `You generate ${gender} first names for a couple choosing a baby name.`,
     "Output ONLY a JSON array of name strings — no prose, no markdown, no comments.",
     "Each name must be a single word (hyphens allowed), properly capitalised, suitable for a child.",
     "No surnames, no nicknames in parentheses, no diacritics, no emojis.",
@@ -49,8 +55,8 @@ export async function POST(req: Request) {
   ].join(" ");
 
   const userMessage = styleRaw
-    ? `Generate ${count} masculine first names with this vibe: ${styleRaw}. Return only a JSON array of strings.`
-    : `Generate ${count} masculine first names spanning a variety of origins and eras. Return only a JSON array of strings.`;
+    ? `Generate ${count} ${gender} first names with this vibe: ${styleRaw}. Return only a JSON array of strings.`
+    : `Generate ${count} ${gender} first names spanning a variety of origins and eras. Return only a JSON array of strings.`;
 
   let raw: string;
   try {

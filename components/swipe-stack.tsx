@@ -8,6 +8,7 @@ import { apiFetch, useUser } from "@/components/user-provider";
 import { MatchOverlay } from "@/components/match-overlay";
 
 type NameItem = { id: number; name: string };
+type Meta = { origin: string | null; meaning: string | null };
 
 const palettes = [
   "from-amber-200 via-amber-50 to-rose-100",
@@ -42,6 +43,8 @@ export function SwipeStack() {
   const swipedIdsRef = useRef<Set<number>>(new Set());
   const [hasSwipes, setHasSwipes] = useState(false);
   const [undoBusy, setUndoBusy] = useState(false);
+  const [metaCache, setMetaCache] = useState<Record<number, Meta>>({});
+  const metaInflightRef = useRef<Set<number>>(new Set());
 
   const fetchMore = useCallback(async (reset = false) => {
     if (fetchingRef.current) return;
@@ -201,6 +204,22 @@ export function SwipeStack() {
   const top = queue[0];
   const stackBelow = queue.slice(1, 3);
 
+  useEffect(() => {
+    if (!top) return;
+    if (metaCache[top.id]) return;
+    if (metaInflightRef.current.has(top.id)) return;
+    metaInflightRef.current.add(top.id);
+    apiFetch(`/api/names/${top.id}/meaning`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j: Meta | null) => {
+        if (j) setMetaCache((c) => ({ ...c, [top.id]: j }));
+      })
+      .catch(() => {})
+      .finally(() => {
+        metaInflightRef.current.delete(top.id);
+      });
+  }, [top, metaCache]);
+
   return (
     <div className="flex-1 flex flex-col px-5 pt-6 pb-2 min-h-0">
       <header className="relative text-center mb-4">
@@ -249,6 +268,7 @@ export function SwipeStack() {
                   onSwipe={handleSwipe}
                   palette={palettes[top.id % palettes.length]}
                   surname={surname}
+                  meta={metaCache[top.id]}
                 />
               </AnimatePresence>
             </>
@@ -280,11 +300,13 @@ function FrontCard({
   onSwipe,
   palette,
   surname,
+  meta,
 }: {
   item: NameItem;
   onSwipe: (item: NameItem, decision: "like" | "pass") => void;
   palette: string;
   surname: string;
+  meta?: Meta;
 }) {
   const x = useMotionValue(0);
   const rotate = useTransform(x, [-200, 200], [-12, 12]);
@@ -337,6 +359,13 @@ function FrontCard({
         {surname ? (
           <p className="mt-3 font-serif text-2xl leading-none text-stone-600 break-words">
             {surname}
+          </p>
+        ) : null}
+        {meta && (meta.origin || meta.meaning) ? (
+          <p className="mt-5 text-xs text-stone-600 max-w-[260px]">
+            {meta.origin ? <span className="font-medium">{meta.origin}</span> : null}
+            {meta.origin && meta.meaning ? <span className="mx-1.5">·</span> : null}
+            {meta.meaning ? <span className="italic">"{meta.meaning}"</span> : null}
           </p>
         ) : null}
       </div>

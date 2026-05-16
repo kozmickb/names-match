@@ -15,6 +15,13 @@
       "when": 1778884059668,
       "tag": "0001_naive_midnight",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1778915772466,
+      "tag": "0002_faithful_shaman",
+      "breakpoints": true
     }
   ]
 }

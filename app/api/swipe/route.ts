@@ -1,6 +1,7 @@
 import { db, schema } from "@/db/client";
 import { readUserSlug, unauthorized } from "@/lib/api";
-import { partnerOf } from "@/lib/user";
+import { displayName, partnerOf } from "@/lib/user";
+import { sendPushTo } from "@/lib/push";
 import { and, eq } from "drizzle-orm";
 
 export const dynamic = "force-dynamic";
@@ -57,5 +58,14 @@ export async function POST(request: Request) {
     .where(eq(schema.names.id, nameId))
     .limit(1);
 
-  return Response.json({ isMatch: true, name: nameRow ?? { id: nameId, name: "" } });
+  const matchedName = nameRow ?? { id: nameId, name: "" };
+
+  void sendPushTo(partner, {
+    title: "It's a match!",
+    body: `${displayName(slug)} also liked ${matchedName.name}.`,
+    url: "/matches",
+    tag: `match-${matchedName.id}`,
+  }).catch(() => {});
+
+  return Response.json({ isMatch: true, name: matchedName });
 }
