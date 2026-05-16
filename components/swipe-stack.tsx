@@ -250,7 +250,7 @@ export function SwipeStack() {
         </button>
       </header>
 
-      <div className="relative flex-1 flex items-center justify-center min-h-0">
+      <div className="relative flex-1 flex flex-col items-center justify-center min-h-0">
         <div className="relative w-full max-w-[380px] aspect-[3/4]">
           {loading && queue.length === 0 ? (
             <SkeletonCard />
@@ -274,6 +274,27 @@ export function SwipeStack() {
             </>
           )}
         </div>
+
+        {top && (
+          <div className="mt-5 flex items-center justify-center gap-6 w-full">
+            <button
+              type="button"
+              onClick={() => handleSwipe(top, "pass")}
+              aria-label="Pass"
+              className="h-16 w-16 rounded-full bg-white border border-stone-200 shadow-md flex items-center justify-center text-rose-500 active:scale-90 transition"
+            >
+              <X size={28} strokeWidth={2.4} />
+            </button>
+            <button
+              type="button"
+              onClick={() => handleSwipe(top, "like")}
+              aria-label="Like"
+              className="h-16 w-16 rounded-full bg-gradient-to-br from-rose-500 to-rose-600 shadow-lg shadow-rose-500/30 flex items-center justify-center text-white active:scale-90 transition"
+            >
+              <Heart size={26} fill="white" />
+            </button>
+          </div>
+        )}
       </div>
 
       <MatchOverlay name={matchName} surname={surname} onDismiss={() => setMatchName(null)} />
@@ -335,22 +356,22 @@ function FrontCard({
           fly("pass");
         }
       }}
-      className={`absolute inset-0 select-none touch-pan-y rounded-3xl border border-stone-200/70 shadow-xl shadow-stone-900/5 bg-gradient-to-br ${palette} flex flex-col`}
+      className={`absolute inset-0 select-none touch-none rounded-3xl border border-stone-200/70 shadow-xl shadow-stone-900/5 bg-gradient-to-br ${palette} flex flex-col cursor-grab active:cursor-grabbing`}
     >
       <motion.div
-        style={{ opacity: likeOpacity }}
+        style={{ opacity: likeOpacity, pointerEvents: "none" }}
         className="absolute top-5 left-5 px-3 py-1.5 border-2 border-emerald-500 text-emerald-600 font-bold uppercase tracking-widest rounded-md -rotate-12 text-sm"
       >
         Like
       </motion.div>
       <motion.div
-        style={{ opacity: passOpacity }}
+        style={{ opacity: passOpacity, pointerEvents: "none" }}
         className="absolute top-5 right-5 px-3 py-1.5 border-2 border-rose-500 text-rose-600 font-bold uppercase tracking-widest rounded-md rotate-12 text-sm"
       >
         Pass
       </motion.div>
 
-      <div className="flex-1 flex flex-col items-center justify-center px-6 text-center">
+      <div className="flex-1 flex flex-col items-center justify-center px-6 text-center pointer-events-none">
         <p className="text-xs uppercase tracking-widest text-stone-500">Name</p>
         <p className="mt-1 text-xs text-stone-500">#{item.id}</p>
         <h2 className="mt-6 font-serif text-[56px] leading-none text-stone-900 break-words">
@@ -365,28 +386,9 @@ function FrontCard({
           <p className="mt-5 text-xs text-stone-600 max-w-[260px]">
             {meta.origin ? <span className="font-medium">{meta.origin}</span> : null}
             {meta.origin && meta.meaning ? <span className="mx-1.5">·</span> : null}
-            {meta.meaning ? <span className="italic">"{meta.meaning}"</span> : null}
+            {meta.meaning ? <span className="italic">&ldquo;{meta.meaning}&rdquo;</span> : null}
           </p>
         ) : null}
-      </div>
-
-      <div className="px-5 pb-6 pt-2 flex items-center justify-between gap-4">
-        <button
-          type="button"
-          onClick={() => fly("pass")}
-          className="flex-1 flex items-center justify-center gap-2 rounded-2xl border border-stone-300 bg-white/70 backdrop-blur py-3 min-h-[48px] text-stone-700 active:scale-[0.97] transition"
-        >
-          <X size={18} />
-          <span>Pass</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => fly("like")}
-          className="flex-1 flex items-center justify-center gap-2 rounded-2xl bg-rose-500 text-white py-3 min-h-[48px] shadow-lg shadow-rose-500/30 active:scale-[0.97] transition"
-        >
-          <Heart size={18} />
-          <span>Like</span>
-        </button>
       </div>
     </motion.div>
   );
