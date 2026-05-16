@@ -2,7 +2,8 @@
 
 import { motion, useMotionValue, useTransform, AnimatePresence } from "framer-motion";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Heart, X, RotateCcw } from "lucide-react";
+import { Heart, X, RotateCcw, Sparkles, ListChecks } from "lucide-react";
+import Link from "next/link";
 import { toast } from "sonner";
 import { apiFetch, useUser } from "@/components/user-provider";
 import { MatchOverlay } from "@/components/match-overlay";
@@ -255,7 +256,7 @@ export function SwipeStack() {
           {loading && queue.length === 0 ? (
             <SkeletonCard />
           ) : !top ? (
-            <EmptyState />
+            <EmptyState onGenerated={() => fetchMore(true)} />
           ) : (
             <>
               {stackBelow.map((item, idx) => (
@@ -400,14 +401,121 @@ function SkeletonCard() {
   );
 }
 
-function EmptyState() {
+function EmptyState({ onGenerated }: { onGenerated: () => void }) {
+  const [stats, setStats] = useState<{
+    likedByMe: number;
+    totalMatches: number;
+  } | null>(null);
+  const [pendingMine, setPendingMine] = useState<number | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    apiFetch("/api/stats")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => {
+        if (j) setStats({ likedByMe: j.likedByMe, totalMatches: j.totalMatches });
+      })
+      .catch(() => {});
+    apiFetch("/api/likes")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => {
+        if (j) setPendingMine(j.mine.length);
+      })
+      .catch(() => {});
+  }, []);
+
+  const generate = async () => {
+    setBusy(true);
+    try {
+      const r = await apiFetch("/api/names/generate", {
+        method: "POST",
+        body: JSON.stringify({ count: 30 }),
+      });
+      const j = (await r.json()) as { added?: number; error?: string };
+      if (!r.ok || j.error) {
+        toast.error(j.error || "Generation failed.");
+        return;
+      }
+      if (!j.added) {
+        toast.message("AI returned only duplicates. Try a style hint in Settings.");
+        return;
+      }
+      toast.success(`Added ${j.added} new name${j.added === 1 ? "" : "s"}`);
+      onGenerated();
+    } catch {
+      toast.error("Could not reach the AI.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
-    <div className="absolute inset-0 rounded-3xl border border-dashed border-stone-300 bg-white/60 flex flex-col items-center justify-center text-center px-6">
+    <div className="absolute inset-0 rounded-3xl border border-dashed border-stone-300 bg-white/70 flex flex-col items-center justify-center text-center px-6 py-8 overflow-y-auto">
       <div className="text-5xl">🎉</div>
-      <p className="mt-4 font-serif text-2xl text-stone-800">All swiped.</p>
-      <p className="mt-2 text-sm text-stone-500">
-        Check matches to see what you both liked.
+      <p className="mt-4 font-serif text-2xl text-stone-800">You are all caught up.</p>
+      <p className="mt-2 text-sm text-stone-500 max-w-[280px]">
+        Every name in the deck has had your verdict.
       </p>
+
+      {stats && (
+        <div className="mt-5 grid grid-cols-3 gap-2 w-full max-w-[300px]">
+          <Stat label="Liked" value={stats.likedByMe} />
+          <Stat label="Matches" value={stats.totalMatches} highlight />
+          <Stat label="Pending" value={pendingMine ?? 0} />
+        </div>
+      )}
+
+      <div className="mt-6 flex flex-col gap-2 w-full max-w-[280px]">
+        <Link
+          href="/matches"
+          className="rounded-2xl bg-rose-500 hover:bg-rose-600 text-white font-medium py-3 min-h-[44px] text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition"
+        >
+          <ListChecks size={16} />
+          View matches
+        </Link>
+        <button
+          type="button"
+          onClick={generate}
+          disabled={busy}
+          className="rounded-2xl border border-amber-300 bg-amber-50 hover:bg-amber-100 text-amber-800 font-medium py-3 min-h-[44px] text-sm flex items-center justify-center gap-2 active:scale-[0.98] transition disabled:opacity-50"
+        >
+          <Sparkles size={16} className={busy ? "animate-pulse" : ""} />
+          {busy ? "Generating…" : "Generate 30 more with AI"}
+        </button>
+        <Link
+          href="/settings"
+          className="text-xs text-stone-500 underline mt-1"
+        >
+          More options in Settings
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+function Stat({
+  label,
+  value,
+  highlight,
+}: {
+  label: string;
+  value: number;
+  highlight?: boolean;
+}) {
+  return (
+    <div
+      className={`rounded-xl border p-2 ${
+        highlight ? "border-rose-200 bg-rose-50" : "border-stone-200 bg-white/70"
+      }`}
+    >
+      <div className="text-[10px] uppercase tracking-widest text-stone-500">{label}</div>
+      <div
+        className={`mt-0.5 font-serif text-xl ${
+          highlight ? "text-rose-600" : "text-stone-900"
+        }`}
+      >
+        {value}
+      </div>
     </div>
   );
 }
