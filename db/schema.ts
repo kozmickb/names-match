@@ -11,6 +11,12 @@ export const names = pgTable("names", {
   metaFetchedAt: timestamp("meta_fetched_at", { withTimezone: true }),
 });
 
+export const userProfiles = pgTable("user_profiles", {
+  userSlug: userSlugEnum("user_slug").primaryKey(),
+  emoji: text("emoji").notNull().default("🧑"),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
 export const pushSubscriptions = pgTable(
   "push_subscriptions",
   {

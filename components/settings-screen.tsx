@@ -32,8 +32,20 @@ type Stats = {
 
 type ShuffleState = { enabled: boolean; seed: number; updatedAt: string | null };
 
+const EMOJI_PICKS = [
+  "🧔🏻", "🧔🏼", "🧔🏽", "🧔🏾", "🧔🏿",
+  "👨🏻", "👨🏼", "👨🏽", "👨🏾", "👨🏿",
+  "👩🏻", "👩🏼", "👩🏽", "👩🏾", "👩🏿",
+  "🧑🏻", "🧑🏼", "🧑🏽", "🧑🏾", "🧑🏿",
+  "🦄", "🐱", "🦊", "🐼", "🐻",
+  "🦁", "🐶", "🐰", "🐧", "🐝",
+  "🌟", "✨", "💫", "🌙", "☀️",
+  "❤️", "💜", "💚", "🧡", "💙",
+  "🍓", "🍒", "🍑", "🥭", "🍀",
+];
+
 export function SettingsScreen() {
-  const { user, setUser, surname, setSurname } = useUser();
+  const { user, setUser, surname, setSurname, profiles, setOwnEmoji } = useUser();
   const router = useRouter();
   const [stats, setStats] = useState<Stats | null>(null);
   const [shuffle, setShuffle] = useState<ShuffleState | null>(null);
@@ -46,6 +58,8 @@ export function SettingsScreen() {
   const [pushEnabled, setPushEnabled] = useState<boolean | null>(null);
   const [pushBusy, setPushBusy] = useState(false);
   const [pushAvailable] = useState<boolean>(() => pushSupported());
+  const [emojiOpen, setEmojiOpen] = useState(false);
+  const [emojiDraft, setEmojiDraft] = useState("");
 
   const load = useCallback(async () => {
     try {
@@ -190,11 +204,22 @@ export function SettingsScreen() {
 
   if (!user) return null;
 
-  const emoji = user === "karo" ? "🧔🏻" : "👩🏼";
+  const emoji = profiles[user].emoji;
   const gradient =
     user === "karo"
       ? "from-amber-200 via-amber-100 to-rose-100"
       : "from-rose-200 via-rose-100 to-amber-100";
+
+  const chooseEmoji = async (next: string) => {
+    try {
+      await setOwnEmoji(next);
+      toast.success("Avatar updated");
+      setEmojiOpen(false);
+      setEmojiDraft("");
+    } catch {
+      toast.error("Could not save avatar.");
+    }
+  };
 
   return (
     <div className="flex-1 flex flex-col px-5 pt-6 pb-6 min-h-0 overflow-y-auto">
@@ -202,14 +227,21 @@ export function SettingsScreen() {
       <p className="text-xs text-stone-500 mt-1">Switch user, see stats, reset.</p>
 
       <section className="mt-6 rounded-3xl border border-stone-200/70 bg-white/70 p-5 flex items-center gap-4">
-        <div
-          className={`h-16 w-16 rounded-2xl bg-gradient-to-br ${gradient} flex items-center justify-center text-3xl`}
+        <button
+          type="button"
+          onClick={() => setEmojiOpen(true)}
+          aria-label="Change your avatar emoji"
+          className={`relative h-16 w-16 rounded-2xl bg-gradient-to-br ${gradient} flex items-center justify-center text-3xl active:scale-95 transition`}
         >
-          {emoji}
-        </div>
+          <span>{emoji}</span>
+          <span className="absolute -bottom-1 -right-1 h-5 w-5 rounded-full bg-amber-500 text-white text-[10px] flex items-center justify-center shadow">
+            ✎
+          </span>
+        </button>
         <div className="flex-1">
           <div className="text-xs uppercase tracking-widest text-stone-500">Swiping as</div>
           <div className="font-serif text-2xl text-stone-900">{displayName(user)}</div>
+          <div className="text-xs text-stone-500">Tap the tile to change your emoji</div>
         </div>
         <Button variant="outline" onClick={switchUser} className="rounded-full">
           <LogOut size={14} />
@@ -387,6 +419,58 @@ export function SettingsScreen() {
           Reset my swipes
         </Button>
       </section>
+
+      <Dialog open={emojiOpen} onOpenChange={setEmojiOpen}>
+        <DialogContent className="bg-amber-50 max-w-md">
+          <DialogHeader>
+            <DialogTitle>Pick your emoji</DialogTitle>
+            <DialogDescription>
+              Visible to both of you on the picker and Settings.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-8 gap-1.5 my-2 max-h-[280px] overflow-y-auto">
+            {EMOJI_PICKS.map((e) => (
+              <button
+                key={e}
+                type="button"
+                onClick={() => chooseEmoji(e)}
+                className={`h-11 w-11 rounded-xl text-2xl flex items-center justify-center transition active:scale-90 ${
+                  e === emoji ? "bg-amber-200 ring-2 ring-amber-500" : "hover:bg-stone-100"
+                }`}
+              >
+                {e}
+              </button>
+            ))}
+          </div>
+          <div className="mt-2">
+            <label className="text-xs text-stone-500 uppercase tracking-widest">
+              Or paste any emoji
+            </label>
+            <div className="mt-1 flex gap-2">
+              <input
+                type="text"
+                value={emojiDraft}
+                onChange={(e) => setEmojiDraft(e.target.value)}
+                placeholder="🎯"
+                maxLength={16}
+                className="flex-1 rounded-2xl border border-stone-300 bg-white/80 px-4 py-3 min-h-[44px] text-2xl text-center outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-200"
+              />
+              <Button
+                onClick={() => chooseEmoji(emojiDraft)}
+                disabled={!emojiDraft.trim()}
+                className="bg-amber-500 hover:bg-amber-600 text-white"
+              >
+                Use
+              </Button>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEmojiOpen(false)} className="w-full">
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={confirm} onOpenChange={setConfirm}>
         <DialogContent className="bg-amber-50">

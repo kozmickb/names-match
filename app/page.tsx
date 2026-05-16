@@ -6,23 +6,21 @@ import { useEffect } from "react";
 import { motion } from "framer-motion";
 import type { UserSlug } from "@/lib/user";
 
-const tiles: { slug: UserSlug; label: string; emoji: string; gradient: string }[] = [
+const tileMeta: { slug: UserSlug; label: string; gradient: string }[] = [
   {
     slug: "karo",
     label: "Karo",
-    emoji: "🧔🏻",
     gradient: "from-amber-200 via-amber-100 to-rose-100",
   },
   {
     slug: "lucy",
     label: "Lucy",
-    emoji: "👩🏼",
     gradient: "from-rose-200 via-rose-100 to-amber-100",
   },
 ];
 
 export default function OnboardingPage() {
-  const { user, ready, setUser } = useUser();
+  const { user, ready, setUser, profiles } = useUser();
   const router = useRouter();
 
   useEffect(() => {
@@ -51,7 +49,7 @@ export default function OnboardingPage() {
         </motion.div>
 
         <div className="mt-10 grid grid-cols-2 gap-4">
-          {tiles.map((t, i) => (
+          {tileMeta.map((t, i) => (
             <motion.button
               key={t.slug}
               type="button"
@@ -66,7 +64,7 @@ export default function OnboardingPage() {
               whileHover={{ y: -2 }}
               className={`group relative overflow-hidden rounded-3xl border border-stone-200/70 bg-gradient-to-br ${t.gradient} aspect-[3/4] flex flex-col items-center justify-center shadow-sm`}
             >
-              <span className="text-6xl">{t.emoji}</span>
+              <span className="text-6xl">{profiles[t.slug].emoji}</span>
               <span className="mt-3 font-serif text-2xl text-stone-800">{t.label}</span>
             </motion.button>
           ))}
