@@ -131,5 +131,5 @@ export function apiFetch(input: RequestInfo | URL, init: RequestInit = {}) {
   if (!headers.has("content-type") && init.body && typeof init.body === "string") {
     headers.set("content-type", "application/json");
   }
-  return fetch(input, { ...init, headers, cache: "no-store" });
+  return fetch(input, { ...init, headers, cache: "no-store", credentials: "same-origin" });
 }
