@@ -20,11 +20,15 @@ export async function GET(request: Request) {
   const shuffled = seed !== 0;
 
   const [profile] = await db
-    .select({ autoPass: schema.userProfiles.autoPassVariants })
+    .select({
+      autoPass: schema.userProfiles.autoPassVariants,
+      genderFilter: schema.userProfiles.genderFilter,
+    })
     .from(schema.userProfiles)
     .where(eq(schema.userProfiles.userSlug, slug))
     .limit(1);
   const autoPass = !!profile?.autoPass;
+  const filter = profile?.genderFilter ?? "all";
 
   const orderClause = shuffled
     ? sql`hashtext(n.id::text || ':' || ${seed}::text)`
@@ -40,6 +44,15 @@ export async function GET(request: Request) {
       )`
     : sql``;
 
+  const genderFilter =
+    filter === "masculine"
+      ? sql`and (n.gender = 'masculine' or n.gender = 'unisex' or n.gender is null)`
+      : filter === "feminine"
+      ? sql`and (n.gender = 'feminine' or n.gender = 'unisex' or n.gender is null)`
+      : filter === "unisex"
+      ? sql`and n.gender = 'unisex'`
+      : sql``;
+
   const rows = (await db.execute<{ id: number; name: string }>(sql`
     select n.id, n.name
     from names n
@@ -48,18 +61,37 @@ export async function GET(request: Request) {
       where s.name_id = n.id and s.user_slug = ${slug}
     )
     ${variantsFilter}
+    ${genderFilter}
     order by ${orderClause} asc
     limit ${limit}
   `)) as unknown as Array<{ id: number; name: string }>;
 
-  const [{ total }] = await db
-    .select({ total: sql<number>`count(*)::int` })
-    .from(schema.names);
+  const totalQ = sql<number>`count(*)::int`;
+  let totalRow: { total: number };
+  if (filter === "masculine") {
+    [totalRow] = await db
+      .select({ total: totalQ })
+      .from(schema.names)
+      .where(sql`gender = 'masculine' or gender = 'unisex' or gender is null`);
+  } else if (filter === "feminine") {
+    [totalRow] = await db
+      .select({ total: totalQ })
+      .from(schema.names)
+      .where(sql`gender = 'feminine' or gender = 'unisex' or gender is null`);
+  } else if (filter === "unisex") {
+    [totalRow] = await db
+      .select({ total: totalQ })
+      .from(schema.names)
+      .where(sql`gender = 'unisex'`);
+  } else {
+    [totalRow] = await db.select({ total: totalQ }).from(schema.names);
+  }
 
   return Response.json({
     names: rows.map((r) => ({ id: Number(r.id), name: r.name })),
-    total,
+    total: totalRow.total,
     shuffled,
     autoPassVariants: autoPass,
+    genderFilter: filter,
   });
 }

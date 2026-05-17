@@ -103,7 +103,7 @@ export async function POST(req: Request) {
 
   const inserted = await db
     .insert(schema.names)
-    .values(cleaned.map((name) => ({ name })))
+    .values(cleaned.map((name) => ({ name, gender })))
     .onConflictDoNothing({ target: schema.names.name })
     .returning({ id: schema.names.id, name: schema.names.name });
 

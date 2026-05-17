@@ -58,6 +58,8 @@ export function SettingsScreen() {
   const [suggestBusy, setSuggestBusy] = useState(false);
   const [autoPass, setAutoPass] = useState(false);
   const [autoPassBusy, setAutoPassBusy] = useState(false);
+  const [filter, setFilter] = useState<"all" | "masculine" | "feminine" | "unisex">("all");
+  const [filterBusy, setFilterBusy] = useState(false);
   const [pushEnabled, setPushEnabled] = useState<boolean | null>(null);
   const [pushBusy, setPushBusy] = useState(false);
   const [pushAvailable] = useState<boolean>(() => pushSupported());
@@ -93,7 +95,42 @@ export function SettingsScreen() {
         if (j) setAutoPass(!!j.autoPassVariants);
       })
       .catch(() => {});
+    apiFetch("/api/profile/gender-filter")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j: { genderFilter: typeof filter } | null) => {
+        if (j) setFilter(j.genderFilter);
+      })
+      .catch(() => {});
   }, []);
+
+  const setGenderFilter = async (next: typeof filter) => {
+    if (next === filter) return;
+    const prev = filter;
+    setFilter(next);
+    setFilterBusy(true);
+    try {
+      const r = await apiFetch("/api/profile/gender-filter", {
+        method: "POST",
+        body: JSON.stringify({ filter: next }),
+      });
+      if (!r.ok) throw new Error();
+      toast.success(
+        next === "all"
+          ? "Showing all names"
+          : next === "masculine"
+          ? "Filtering to boys names"
+          : next === "feminine"
+          ? "Filtering to girls names"
+          : "Filtering to unisex names",
+        { duration: 1500 }
+      );
+    } catch {
+      setFilter(prev);
+      toast.error("Could not save filter.");
+    } finally {
+      setFilterBusy(false);
+    }
+  };
 
   const togglePush = async (next: boolean) => {
     setPushBusy(true);
@@ -338,6 +375,35 @@ export function SettingsScreen() {
         />
         <p className="mt-2 text-xs text-stone-500">
           Saved to this browser only.
+        </p>
+      </section>
+
+      <section className="mt-5 rounded-3xl border border-stone-200/70 bg-white/70 p-5">
+        <div className="flex items-center gap-2 text-stone-800 font-medium">
+          <span className="font-serif text-base">Show me</span>
+        </div>
+        <p className="mt-2 text-sm text-stone-600">
+          Filter the swipe deck to the kind of names you want to see.
+        </p>
+        <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {(["all", "masculine", "feminine", "unisex"] as const).map((opt) => (
+            <button
+              key={opt}
+              type="button"
+              onClick={() => setGenderFilter(opt)}
+              disabled={filterBusy}
+              className={`rounded-2xl border py-2.5 text-xs font-medium min-h-[44px] capitalize transition ${
+                filter === opt
+                  ? "border-rose-400 bg-rose-50 text-rose-700"
+                  : "border-stone-300 bg-white/80 text-stone-600"
+              }`}
+            >
+              {opt === "all" ? "All" : opt === "masculine" ? "Boys" : opt === "feminine" ? "Girls" : "Unisex"}
+            </button>
+          ))}
+        </div>
+        <p className="mt-2 text-[11px] text-stone-500">
+          Picking Boys or Girls also includes unisex names. Saved per user.
         </p>
       </section>
 

@@ -43,6 +43,13 @@
       "when": 1779054058274,
       "tag": "0005_misty_nomad",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1779054763283,
+      "tag": "0006_parallel_hairball",
+      "breakpoints": true
     }
   ]
 }

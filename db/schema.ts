@@ -12,12 +12,14 @@ export const names = pgTable("names", {
   ukRank: integer("uk_rank"),
   ukBlurb: text("uk_blurb"),
   popularityFetchedAt: timestamp("popularity_fetched_at", { withTimezone: true }),
+  gender: text("gender"),
 });
 
 export const userProfiles = pgTable("user_profiles", {
   userSlug: userSlugEnum("user_slug").primaryKey(),
   emoji: text("emoji").notNull().default("🧑"),
   autoPassVariants: boolean("auto_pass_variants").notNull().default(false),
+  genderFilter: text("gender_filter").notNull().default("all"),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
 

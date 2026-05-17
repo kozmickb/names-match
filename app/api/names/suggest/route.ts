@@ -116,9 +116,12 @@ export async function POST(req: Request) {
     return Response.json({ error: "AI returned no usable names." }, { status: 502 });
   }
 
+  const insertedGender = gender === "any" ? null : (gender as "masculine" | "feminine" | "unisex");
   const inserted = await db
     .insert(schema.names)
-    .values(cleaned.map((name) => ({ name })))
+    .values(
+      cleaned.map((name) => (insertedGender ? { name, gender: insertedGender } : { name }))
+    )
     .onConflictDoNothing({ target: schema.names.name })
     .returning({ id: schema.names.id, name: schema.names.name });
 
