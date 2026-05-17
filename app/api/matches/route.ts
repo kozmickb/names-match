@@ -14,13 +14,17 @@ export async function GET() {
     matched_at: string | Date;
     my_favourite: boolean;
     partner_favourite: boolean;
+    my_note: string | null;
+    partner_note: string | null;
   }>(sql`
     select
       n.id,
       n.name,
       greatest(sk.created_at, sl.created_at) as matched_at,
       case when ${slug} = 'karo' then sk.favourite else sl.favourite end as my_favourite,
-      case when ${slug} = 'karo' then sl.favourite else sk.favourite end as partner_favourite
+      case when ${slug} = 'karo' then sl.favourite else sk.favourite end as partner_favourite,
+      case when ${slug} = 'karo' then sk.note else sl.note end as my_note,
+      case when ${slug} = 'karo' then sl.note else sk.note end as partner_note
     from names n
     join swipes sk on sk.name_id = n.id and sk.user_slug = 'karo' and sk.decision = 'like'
     join swipes sl on sl.name_id = n.id and sl.user_slug = 'lucy' and sl.decision = 'like'
@@ -33,6 +37,8 @@ export async function GET() {
     matched_at: string | Date;
     my_favourite: boolean;
     partner_favourite: boolean;
+    my_note: string | null;
+    partner_note: string | null;
   }>;
 
   const matches = rows.map((r) => ({
@@ -41,6 +47,8 @@ export async function GET() {
     matchedAt: new Date(r.matched_at).toISOString(),
     myFavourite: !!r.my_favourite,
     partnerFavourite: !!r.partner_favourite,
+    myNote: r.my_note ?? null,
+    partnerNote: r.partner_note ?? null,
   }));
 
   return Response.json({ matches });

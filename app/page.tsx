@@ -2,9 +2,10 @@
 
 import { useUser } from "@/components/user-provider";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import type { UserSlug } from "@/lib/user";
+import { toast } from "sonner";
 
 const tileMeta: { slug: UserSlug; label: string; gradient: string }[] = [
   {
@@ -22,15 +23,83 @@ const tileMeta: { slug: UserSlug; label: string; gradient: string }[] = [
 export default function OnboardingPage() {
   const { user, ready, setUser, profiles } = useUser();
   const router = useRouter();
+  const [authState, setAuthState] = useState<"loading" | "ok" | "needed">("loading");
+  const [pin, setPin] = useState("");
+  const [pinBusy, setPinBusy] = useState(false);
 
   useEffect(() => {
-    if (ready && user) router.replace("/swipe");
-  }, [ready, user, router]);
+    fetch("/api/auth", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((j: { required: boolean; authed: boolean }) => {
+        setAuthState(j.required && !j.authed ? "needed" : "ok");
+      })
+      .catch(() => setAuthState("ok"));
+  }, []);
 
-  if (!ready) {
+  useEffect(() => {
+    if (ready && user && authState === "ok") router.replace("/swipe");
+  }, [ready, user, authState, router]);
+
+  const submitPin = async () => {
+    setPinBusy(true);
+    try {
+      const r = await fetch("/api/auth", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ passcode: pin }),
+      });
+      if (!r.ok) {
+        toast.error("Incorrect passcode.");
+        return;
+      }
+      setAuthState("ok");
+      setPin("");
+    } catch {
+      toast.error("Could not check passcode.");
+    } finally {
+      setPinBusy(false);
+    }
+  };
+
+  if (!ready || authState === "loading") {
     return (
       <main className="flex-1 flex items-center justify-center p-6">
         <div className="h-8 w-32 rounded-full bg-stone-200 animate-pulse" />
+      </main>
+    );
+  }
+
+  if (authState === "needed") {
+    return (
+      <main className="flex-1 flex items-center justify-center px-6 py-10">
+        <div className="w-full max-w-sm text-center">
+          <div className="text-5xl mb-3">🔒</div>
+          <h1 className="font-serif text-3xl tracking-tight text-stone-800">Passcode</h1>
+          <p className="mt-3 text-stone-600 text-sm">
+            Enter the shared passcode to continue.
+          </p>
+          <input
+            type="password"
+            inputMode="numeric"
+            autoFocus
+            value={pin}
+            onChange={(e) => setPin(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && pin) submitPin();
+            }}
+            placeholder="••••"
+            maxLength={32}
+            className="mt-6 w-full rounded-2xl border border-stone-300 bg-white px-4 py-3 text-2xl text-center tracking-widest outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-200"
+          />
+          <button
+            type="button"
+            onClick={submitPin}
+            disabled={!pin || pinBusy}
+            className="mt-4 w-full rounded-2xl bg-rose-500 text-white py-3 font-medium disabled:opacity-50 active:scale-[0.98] transition"
+          >
+            {pinBusy ? "Checking…" : "Unlock"}
+          </button>
+        </div>
       </main>
     );
   }

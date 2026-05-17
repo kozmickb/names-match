@@ -29,6 +29,13 @@
       "when": 1778920294037,
       "tag": "0003_loud_vargas",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1779046869623,
+      "tag": "0004_red_shocker",
+      "breakpoints": true
     }
   ]
 }

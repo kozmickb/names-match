@@ -14,8 +14,24 @@ export const names = pgTable("names", {
 export const userProfiles = pgTable("user_profiles", {
   userSlug: userSlugEnum("user_slug").primaryKey(),
   emoji: text("emoji").notNull().default("🧑"),
+  autoPassVariants: boolean("auto_pass_variants").notNull().default(false),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
+
+export const tournamentVotes = pgTable(
+  "tournament_votes",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    userSlug: userSlugEnum("user_slug").notNull(),
+    winnerNameId: bigint("winner_name_id", { mode: "number" }).notNull().references(() => names.id, { onDelete: "cascade" }),
+    loserNameId: bigint("loser_name_id", { mode: "number" }).notNull().references(() => names.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    uniq: uniqueIndex("tournament_pair_uniq").on(t.userSlug, t.winnerNameId, t.loserNameId),
+    byUser: index("tournament_user_idx").on(t.userSlug),
+  })
+);
 
 export const pushSubscriptions = pgTable(
   "push_subscriptions",
@@ -46,6 +62,7 @@ export const swipes = pgTable(
     nameId: bigint("name_id", { mode: "number" }).notNull().references(() => names.id, { onDelete: "cascade" }),
     decision: decisionEnum("decision").notNull(),
     favourite: boolean("favourite").notNull().default(false),
+    note: text("note"),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   },
   (t) => ({

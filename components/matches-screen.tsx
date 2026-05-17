@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Heart, Trash2, Star, Share2, Clock, Sparkles } from "lucide-react";
+import { Heart, Trash2, Star, Share2, Clock, Sparkles, Trophy, Pencil } from "lucide-react";
+import Link from "next/link";
 import { apiFetch, useUser } from "@/components/user-provider";
 import { timeAgo } from "@/lib/time";
 import {
@@ -22,6 +23,8 @@ type Match = {
   matchedAt: string;
   myFavourite: boolean;
   partnerFavourite: boolean;
+  myNote: string | null;
+  partnerNote: string | null;
 };
 
 type Pending = { id: number; name: string; likedAt: string };
@@ -36,6 +39,12 @@ export function MatchesScreen() {
   const [theirs, setTheirs] = useState<Pending[] | null>(null);
   const [selected, setSelected] = useState<Match | null>(null);
   const [removing, setRemoving] = useState(false);
+  const [noteDraft, setNoteDraft] = useState("");
+  const [noteBusy, setNoteBusy] = useState(false);
+
+  useEffect(() => {
+    setNoteDraft(selected?.myNote ?? "");
+  }, [selected]);
 
   const load = useCallback(async () => {
     try {
@@ -97,6 +106,29 @@ export function MatchesScreen() {
     }
   };
 
+  const saveNote = async () => {
+    if (!selected) return;
+    setNoteBusy(true);
+    try {
+      const r = await apiFetch(`/api/notes/${selected.id}`, {
+        method: "POST",
+        body: JSON.stringify({ note: noteDraft }),
+      });
+      if (!r.ok) throw new Error();
+      const j = (await r.json()) as { note: string | null };
+      setMatches(
+        (cur) =>
+          cur?.map((x) => (x.id === selected.id ? { ...x, myNote: j.note } : x)) ?? null
+      );
+      setSelected((s) => (s ? { ...s, myNote: j.note } : s));
+      toast.success(j.note ? "Note saved" : "Note cleared", { duration: 1200 });
+    } catch {
+      toast.error("Could not save note.");
+    } finally {
+      setNoteBusy(false);
+    }
+  };
+
   const share = async () => {
     if (!matches || matches.length === 0) {
       toast.message("No matches to share yet.");
@@ -140,15 +172,24 @@ export function MatchesScreen() {
           <h1 className="font-serif text-3xl text-stone-800">Matches</h1>
           <p className="text-xs text-stone-500 mt-1">Names you both like.</p>
         </div>
-        <button
-          type="button"
-          onClick={share}
-          aria-label="Share matches"
-          className="inline-flex items-center justify-center gap-1.5 h-10 min-w-[44px] px-3 rounded-full border border-stone-200 bg-white/80 backdrop-blur text-stone-700 shadow-sm text-xs font-medium active:scale-[0.96] transition"
-        >
-          <Share2 size={14} />
-          Share
-        </button>
+        <div className="flex items-center gap-2">
+          <Link
+            href="/tournament"
+            className="inline-flex items-center justify-center gap-1.5 h-10 min-w-[44px] px-3 rounded-full border border-amber-200 bg-amber-50 text-amber-800 shadow-sm text-xs font-medium active:scale-[0.96] transition"
+          >
+            <Trophy size={14} />
+            Rank
+          </Link>
+          <button
+            type="button"
+            onClick={share}
+            aria-label="Share matches"
+            className="inline-flex items-center justify-center gap-1.5 h-10 min-w-[44px] px-3 rounded-full border border-stone-200 bg-white/80 backdrop-blur text-stone-700 shadow-sm text-xs font-medium active:scale-[0.96] transition"
+          >
+            <Share2 size={14} />
+            Share
+          </button>
+        </div>
       </header>
 
       <div className="grid grid-cols-3 gap-1.5 mb-4 p-1 rounded-2xl bg-stone-200/60">
@@ -213,6 +254,42 @@ export function MatchesScreen() {
                   Matched {timeAgo(selected.matchedAt)}
                 </DialogDescription>
               </DialogHeader>
+
+              {selected.partnerNote ? (
+                <div className="rounded-2xl border border-rose-200 bg-rose-50/70 p-3 text-sm">
+                  <div className="text-[10px] uppercase tracking-widest text-rose-700">
+                    Their note
+                  </div>
+                  <p className="mt-1 text-stone-800 italic">&ldquo;{selected.partnerNote}&rdquo;</p>
+                </div>
+              ) : null}
+
+              <div className="rounded-2xl border border-stone-200 bg-white/70 p-3">
+                <label className="text-[10px] uppercase tracking-widest text-stone-500 flex items-center gap-1.5">
+                  <Pencil size={11} />
+                  Your note
+                </label>
+                <textarea
+                  value={noteDraft}
+                  onChange={(e) => setNoteDraft(e.target.value)}
+                  placeholder="Why you like it, who it reminds you of…"
+                  maxLength={400}
+                  rows={3}
+                  className="mt-1 w-full rounded-xl border border-stone-200 bg-white px-3 py-2 text-sm text-stone-800 outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-200 resize-none"
+                />
+                <div className="mt-1 flex items-center justify-between text-[10px] text-stone-400">
+                  <span>{noteDraft.length}/400 · private to you</span>
+                  <button
+                    type="button"
+                    onClick={saveNote}
+                    disabled={noteBusy || noteDraft === (selected.myNote ?? "")}
+                    className="text-xs font-medium text-amber-700 disabled:opacity-40"
+                  >
+                    {noteBusy ? "Saving…" : "Save"}
+                  </button>
+                </div>
+              </div>
+
               <DialogFooter className="flex flex-col gap-2 sm:flex-col">
                 <Button
                   variant="outline"
@@ -339,12 +416,24 @@ function MatchList({
                   {m.name}
                   {surname ? <span className="text-stone-500"> {surname}</span> : null}
                 </div>
-                <div className="text-xs text-stone-500 mt-0.5 flex items-center gap-2">
+                <div className="text-xs text-stone-500 mt-0.5 flex items-center gap-2 flex-wrap">
                   <span>Matched {timeAgo(m.matchedAt)}</span>
                   {m.partnerFavourite ? (
                     <span className="inline-flex items-center gap-0.5 text-amber-600">
                       <Star size={11} className="fill-amber-400" />
                       Their favourite
+                    </span>
+                  ) : null}
+                  {m.myNote ? (
+                    <span className="inline-flex items-center gap-0.5 text-stone-600">
+                      <Pencil size={10} />
+                      Note
+                    </span>
+                  ) : null}
+                  {m.partnerNote ? (
+                    <span className="inline-flex items-center gap-0.5 text-rose-600">
+                      <Pencil size={10} />
+                      Their note
                     </span>
                   ) : null}
                 </div>

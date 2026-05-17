@@ -55,6 +55,9 @@ export function SettingsScreen() {
   const [style, setStyle] = useState("");
   const [gender, setGender] = useState<"masculine" | "feminine" | "unisex">("masculine");
   const [genBusy, setGenBusy] = useState(false);
+  const [suggestBusy, setSuggestBusy] = useState(false);
+  const [autoPass, setAutoPass] = useState(false);
+  const [autoPassBusy, setAutoPassBusy] = useState(false);
   const [pushEnabled, setPushEnabled] = useState<boolean | null>(null);
   const [pushBusy, setPushBusy] = useState(false);
   const [pushAvailable] = useState<boolean>(() => pushSupported());
@@ -82,6 +85,15 @@ export function SettingsScreen() {
       .then((sub) => setPushEnabled(!!sub))
       .catch(() => setPushEnabled(false));
   }, [pushAvailable]);
+
+  useEffect(() => {
+    apiFetch("/api/profile/auto-pass-variants")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j: { autoPassVariants: boolean } | null) => {
+        if (j) setAutoPass(!!j.autoPassVariants);
+      })
+      .catch(() => {});
+  }, []);
 
   const togglePush = async (next: boolean) => {
     setPushBusy(true);
@@ -121,6 +133,59 @@ export function SettingsScreen() {
       toast.error("Could not change notifications.");
     } finally {
       setPushBusy(false);
+    }
+  };
+
+  const suggest = async () => {
+    setSuggestBusy(true);
+    try {
+      const r = await apiFetch("/api/names/suggest", {
+        method: "POST",
+        body: JSON.stringify({ count: 30, gender }),
+      });
+      const j = (await r.json()) as
+        | { added: number; duplicates: number; generated: number; seedSampleSize: number }
+        | { error: string };
+      if (!r.ok || "error" in j) {
+        toast.error("error" in j ? j.error : "Could not generate.");
+        return;
+      }
+      if (j.added === 0) {
+        toast.message("All suggestions were already in your list. Try Generate instead.");
+      } else {
+        toast.success(`Added ${j.added} new name${j.added === 1 ? "" : "s"} like yours`, {
+          description:
+            j.duplicates > 0
+              ? `${j.duplicates} were already in your list.`
+              : `Based on your ${j.seedSampleSize} most recent likes.`,
+        });
+      }
+      load();
+    } catch {
+      toast.error("Could not reach the AI.");
+    } finally {
+      setSuggestBusy(false);
+    }
+  };
+
+  const toggleAutoPass = async (next: boolean) => {
+    setAutoPassBusy(true);
+    setAutoPass(next);
+    try {
+      const r = await apiFetch("/api/profile/auto-pass-variants", {
+        method: "POST",
+        body: JSON.stringify({ enabled: next }),
+      });
+      if (!r.ok) throw new Error();
+      toast.success(
+        next ? "Auto-pass variants on" : "Auto-pass variants off",
+        { duration: 1500 }
+      );
+    } catch {
+      setAutoPass(!next);
+      toast.error("Could not save.");
+    } finally {
+      setAutoPassBusy(false);
     }
   };
 
@@ -312,11 +377,20 @@ export function SettingsScreen() {
         />
         <Button
           onClick={generate}
-          disabled={genBusy}
+          disabled={genBusy || suggestBusy}
           className="mt-3 w-full bg-amber-500 hover:bg-amber-600 text-white"
         >
           <Sparkles size={14} className={genBusy ? "animate-pulse" : ""} />
           {genBusy ? "Generating…" : "Generate 30 names"}
+        </Button>
+        <Button
+          onClick={suggest}
+          disabled={suggestBusy || genBusy}
+          variant="outline"
+          className="mt-2 w-full border-amber-300 text-amber-800 bg-white/60"
+        >
+          <Sparkles size={14} className={suggestBusy ? "animate-pulse" : ""} />
+          {suggestBusy ? "Reading your taste…" : "More like names you liked"}
         </Button>
       </section>
 
@@ -367,6 +441,30 @@ export function SettingsScreen() {
               Shuffle names
             </Button>
           )}
+        </div>
+
+        <div className="mt-4 pt-4 border-t border-stone-200/70 flex items-start justify-between gap-3">
+          <div className="flex-1">
+            <div className="text-sm font-medium text-stone-800">Auto-pass spelling variants</div>
+            <p className="text-xs text-stone-500 mt-0.5">
+              Hide variants of names you have already swiped, e.g. Konrad after Conrad.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => toggleAutoPass(!autoPass)}
+            disabled={autoPassBusy}
+            aria-pressed={autoPass}
+            className={`relative h-6 w-11 rounded-full transition shrink-0 ${
+              autoPass ? "bg-amber-500" : "bg-stone-300"
+            }`}
+          >
+            <span
+              className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${
+                autoPass ? "left-5" : "left-0.5"
+              }`}
+            />
+          </button>
         </div>
       </section>
 

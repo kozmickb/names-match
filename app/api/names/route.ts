@@ -19,9 +19,26 @@ export async function GET(request: Request) {
   const seed = Number(state?.seed ?? 0);
   const shuffled = seed !== 0;
 
+  const [profile] = await db
+    .select({ autoPass: schema.userProfiles.autoPassVariants })
+    .from(schema.userProfiles)
+    .where(eq(schema.userProfiles.userSlug, slug))
+    .limit(1);
+  const autoPass = !!profile?.autoPass;
+
   const orderClause = shuffled
     ? sql`hashtext(n.id::text || ':' || ${seed}::text)`
     : sql`n.id`;
+
+  const variantsFilter = autoPass
+    ? sql`and not exists (
+        select 1 from swipes sv
+        join names nv on nv.id = sv.name_id
+        where sv.user_slug = ${slug}
+          and abs(length(nv.name) - length(n.name)) <= 1
+          and levenshtein(lower(nv.name), lower(n.name)) <= 1
+      )`
+    : sql``;
 
   const rows = (await db.execute<{ id: number; name: string }>(sql`
     select n.id, n.name
@@ -30,6 +47,7 @@ export async function GET(request: Request) {
       select 1 from swipes s
       where s.name_id = n.id and s.user_slug = ${slug}
     )
+    ${variantsFilter}
     order by ${orderClause} asc
     limit ${limit}
   `)) as unknown as Array<{ id: number; name: string }>;
@@ -42,5 +60,6 @@ export async function GET(request: Request) {
     names: rows.map((r) => ({ id: Number(r.id), name: r.name })),
     total,
     shuffled,
+    autoPassVariants: autoPass,
   });
 }

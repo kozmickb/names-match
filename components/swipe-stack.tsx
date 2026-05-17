@@ -7,9 +7,11 @@ import Link from "next/link";
 import { toast } from "sonner";
 import { apiFetch, useUser } from "@/components/user-provider";
 import { MatchOverlay } from "@/components/match-overlay";
+import { flagInitials } from "@/lib/initials";
 
 type NameItem = { id: number; name: string };
 type Meta = { origin: string | null; meaning: string | null };
+type Variant = { id: number; name: string };
 
 const palettes = [
   "from-amber-200 via-amber-50 to-rose-100",
@@ -45,7 +47,9 @@ export function SwipeStack() {
   const [hasSwipes, setHasSwipes] = useState(false);
   const [undoBusy, setUndoBusy] = useState(false);
   const [metaCache, setMetaCache] = useState<Record<number, Meta>>({});
+  const [variantsCache, setVariantsCache] = useState<Record<number, Variant[]>>({});
   const metaInflightRef = useRef<Set<number>>(new Set());
+  const variantsInflightRef = useRef<Set<number>>(new Set());
 
   const fetchMore = useCallback(async (reset = false) => {
     if (fetchingRef.current) return;
@@ -207,19 +211,27 @@ export function SwipeStack() {
 
   useEffect(() => {
     if (!top) return;
-    if (metaCache[top.id]) return;
-    if (metaInflightRef.current.has(top.id)) return;
-    metaInflightRef.current.add(top.id);
-    apiFetch(`/api/names/${top.id}/meaning`)
-      .then((r) => (r.ok ? r.json() : null))
-      .then((j: Meta | null) => {
-        if (j) setMetaCache((c) => ({ ...c, [top.id]: j }));
-      })
-      .catch(() => {})
-      .finally(() => {
-        metaInflightRef.current.delete(top.id);
-      });
-  }, [top, metaCache]);
+    if (!metaCache[top.id] && !metaInflightRef.current.has(top.id)) {
+      metaInflightRef.current.add(top.id);
+      apiFetch(`/api/names/${top.id}/meaning`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((j: Meta | null) => {
+          if (j) setMetaCache((c) => ({ ...c, [top.id]: j }));
+        })
+        .catch(() => {})
+        .finally(() => metaInflightRef.current.delete(top.id));
+    }
+    if (!variantsCache[top.id] && !variantsInflightRef.current.has(top.id)) {
+      variantsInflightRef.current.add(top.id);
+      apiFetch(`/api/names/${top.id}/variants`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((j: { variants: Variant[] } | null) => {
+          if (j) setVariantsCache((c) => ({ ...c, [top.id]: j.variants }));
+        })
+        .catch(() => {})
+        .finally(() => variantsInflightRef.current.delete(top.id));
+    }
+  }, [top, metaCache, variantsCache]);
 
   return (
     <div className="flex-1 flex flex-col px-5 pt-6 pb-2 min-h-0">
@@ -270,6 +282,7 @@ export function SwipeStack() {
                   palette={palettes[top.id % palettes.length]}
                   surname={surname}
                   meta={metaCache[top.id]}
+                  variants={variantsCache[top.id]}
                 />
               </AnimatePresence>
             </>
@@ -323,12 +336,14 @@ function FrontCard({
   palette,
   surname,
   meta,
+  variants,
 }: {
   item: NameItem;
   onSwipe: (item: NameItem, decision: "like" | "pass") => void;
   palette: string;
   surname: string;
   meta?: Meta;
+  variants?: Variant[];
 }) {
   const x = useMotionValue(0);
   const rotate = useTransform(x, [-200, 200], [-12, 12]);
@@ -375,19 +390,39 @@ function FrontCard({
       <div className="flex-1 flex flex-col items-center justify-center px-6 text-center pointer-events-none">
         <p className="text-xs uppercase tracking-widest text-stone-500">Name</p>
         <p className="mt-1 text-xs text-stone-500">#{item.id}</p>
-        <h2 className="mt-6 font-serif text-[56px] leading-none text-stone-900 break-words">
+        <h2 className="mt-5 font-serif text-[56px] leading-none text-stone-900 break-words">
           {item.name}
         </h2>
         {surname ? (
-          <p className="mt-3 font-serif text-2xl leading-none text-stone-600 break-words">
-            {surname}
-          </p>
+          <>
+            <p className="mt-3 font-serif text-2xl leading-none text-stone-600 break-words">
+              {surname}
+            </p>
+            {(() => {
+              const i = flagInitials(item.name, surname);
+              return (
+                <p
+                  className={`mt-2 text-[10px] tracking-widest uppercase ${
+                    i.flagged ? "text-rose-600 font-semibold" : "text-stone-500"
+                  }`}
+                >
+                  Initials: {i.initials}
+                  {i.flagged ? " ⚠" : ""}
+                </p>
+              );
+            })()}
+          </>
         ) : null}
         {meta && (meta.origin || meta.meaning) ? (
-          <p className="mt-5 text-xs text-stone-600 max-w-[260px]">
+          <p className="mt-4 text-xs text-stone-600 max-w-[260px]">
             {meta.origin ? <span className="font-medium">{meta.origin}</span> : null}
             {meta.origin && meta.meaning ? <span className="mx-1.5">·</span> : null}
             {meta.meaning ? <span className="italic">&ldquo;{meta.meaning}&rdquo;</span> : null}
+          </p>
+        ) : null}
+        {variants && variants.length > 0 ? (
+          <p className="mt-3 text-[11px] text-stone-500 max-w-[260px]">
+            Also spelled: {variants.map((v) => v.name).join(", ")}
           </p>
         ) : null}
       </div>
