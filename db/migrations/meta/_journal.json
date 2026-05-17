@@ -36,6 +36,13 @@
       "when": 1779046869623,
       "tag": "0004_red_shocker",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1779054058274,
+      "tag": "0005_misty_nomad",
+      "breakpoints": true
     }
   ]
 }

@@ -12,6 +12,7 @@ import { flagInitials } from "@/lib/initials";
 type NameItem = { id: number; name: string };
 type Meta = { origin: string | null; meaning: string | null };
 type Variant = { id: number; name: string };
+type Popularity = { rank: number | null; blurb: string | null };
 
 const palettes = [
   "from-amber-200 via-amber-50 to-rose-100",
@@ -48,8 +49,10 @@ export function SwipeStack() {
   const [undoBusy, setUndoBusy] = useState(false);
   const [metaCache, setMetaCache] = useState<Record<number, Meta>>({});
   const [variantsCache, setVariantsCache] = useState<Record<number, Variant[]>>({});
+  const [popCache, setPopCache] = useState<Record<number, Popularity>>({});
   const metaInflightRef = useRef<Set<number>>(new Set());
   const variantsInflightRef = useRef<Set<number>>(new Set());
+  const popInflightRef = useRef<Set<number>>(new Set());
 
   const fetchMore = useCallback(async (reset = false) => {
     if (fetchingRef.current) return;
@@ -231,7 +234,17 @@ export function SwipeStack() {
         .catch(() => {})
         .finally(() => variantsInflightRef.current.delete(top.id));
     }
-  }, [top, metaCache, variantsCache]);
+    if (!popCache[top.id] && !popInflightRef.current.has(top.id)) {
+      popInflightRef.current.add(top.id);
+      apiFetch(`/api/names/${top.id}/popularity`)
+        .then((r) => (r.ok ? r.json() : null))
+        .then((j: Popularity | null) => {
+          if (j) setPopCache((c) => ({ ...c, [top.id]: j }));
+        })
+        .catch(() => {})
+        .finally(() => popInflightRef.current.delete(top.id));
+    }
+  }, [top, metaCache, variantsCache, popCache]);
 
   return (
     <div className="flex-1 flex flex-col px-5 pt-6 pb-2 min-h-0">
@@ -283,6 +296,7 @@ export function SwipeStack() {
                   surname={surname}
                   meta={metaCache[top.id]}
                   variants={variantsCache[top.id]}
+                  popularity={popCache[top.id]}
                 />
               </AnimatePresence>
             </>
@@ -337,6 +351,7 @@ function FrontCard({
   surname,
   meta,
   variants,
+  popularity,
 }: {
   item: NameItem;
   onSwipe: (item: NameItem, decision: "like" | "pass") => void;
@@ -344,6 +359,7 @@ function FrontCard({
   surname: string;
   meta?: Meta;
   variants?: Variant[];
+  popularity?: Popularity;
 }) {
   const x = useMotionValue(0);
   const rotate = useTransform(x, [-200, 200], [-12, 12]);
@@ -420,6 +436,9 @@ function FrontCard({
             {meta.meaning ? <span className="italic">&ldquo;{meta.meaning}&rdquo;</span> : null}
           </p>
         ) : null}
+        {popularity && (popularity.rank || popularity.blurb) ? (
+          <PopularityChip rank={popularity.rank} blurb={popularity.blurb} />
+        ) : null}
         {variants && variants.length > 0 ? (
           <p className="mt-3 text-[11px] text-stone-500 max-w-[260px]">
             Also spelled: {variants.map((v) => v.name).join(", ")}
@@ -427,6 +446,41 @@ function FrontCard({
         ) : null}
       </div>
     </motion.div>
+  );
+}
+
+function PopularityChip({ rank, blurb }: { rank: number | null; blurb: string | null }) {
+  let chipClass = "bg-stone-100 text-stone-700 border-stone-200";
+  let label: string | null = null;
+
+  if (rank !== null) {
+    if (rank <= 10) {
+      chipClass = "bg-amber-100 text-amber-800 border-amber-300";
+      label = `Top 10 UK · #${rank}`;
+    } else if (rank <= 30) {
+      chipClass = "bg-sky-100 text-sky-800 border-sky-300";
+      label = `Top 30 UK · #${rank}`;
+    } else {
+      chipClass = "bg-stone-100 text-stone-700 border-stone-300";
+      label = `Top 100 UK · #${rank}`;
+    }
+  } else if (blurb) {
+    label = blurb;
+  }
+
+  if (!label) return null;
+
+  return (
+    <div className="mt-3 flex flex-col items-center gap-1">
+      <span
+        className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-medium uppercase tracking-wider border ${chipClass}`}
+      >
+        🇬🇧 {label}
+      </span>
+      {rank !== null && blurb ? (
+        <span className="text-[10px] text-stone-500 max-w-[240px]">{blurb}</span>
+      ) : null}
+    </div>
   );
 }
 

@@ -9,6 +9,9 @@ export const names = pgTable("names", {
   origin: text("origin"),
   meaning: text("meaning"),
   metaFetchedAt: timestamp("meta_fetched_at", { withTimezone: true }),
+  ukRank: integer("uk_rank"),
+  ukBlurb: text("uk_blurb"),
+  popularityFetchedAt: timestamp("popularity_fetched_at", { withTimezone: true }),
 });
 
 export const userProfiles = pgTable("user_profiles", {
