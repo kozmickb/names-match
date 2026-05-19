@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <linearGradient id="bg2" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FFF7EE"/>
+      <stop offset="1" stop-color="#FFE7CC"/>
+    </linearGradient>
+    <linearGradient id="bundle2" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#F5A097"/>
+      <stop offset="1" stop-color="#E07C70"/>
+    </linearGradient>
+    <linearGradient id="bow" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFBF3"/>
+      <stop offset="1" stop-color="#FFE7CC"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1024" height="1024" rx="224" ry="224" fill="url(#bg2)"/>
+
+  <g transform="translate(512 560)">
+    <path d="M -260 -60 Q -260 -180 -130 -200 Q 0 -210 130 -200 Q 260 -180 260 -60 Q 260 100 200 220 Q 0 280 -200 220 Q -260 100 -260 -60 Z"
+          fill="url(#bundle2)"/>
+    <path d="M -260 -60 Q -260 -180 -130 -200 Q 0 -210 130 -200 Q 260 -180 260 -60 Q 260 -20 240 0 L -240 0 Q -260 -20 -260 -60 Z"
+          fill="#FFFBF3" opacity="0.18"/>
+    <path d="M -20 -200 L -20 240" stroke="#FFFBF3" stroke-width="14" opacity="0.5"/>
+    <path d="M  20 -200 L  20 240" stroke="#FFFBF3" stroke-width="14" opacity="0.5"/>
+  </g>
+
+  <g transform="translate(512 360)">
+    <path d="M 0 0 C -60 -90 -160 -50 -120 30 C -80 60 -30 50 0 30 C 30 50 80 60 120 30 C 160 -50 60 -90 0 0 Z"
+          fill="url(#bow)" stroke="#E07C70" stroke-width="10"/>
+    <circle cx="0" cy="20" r="20" fill="#F5A097"/>
+  </g>
+
+  <g transform="translate(512 760)">
+    <path d="M 0 0 C -16 -22 -52 -22 -52 0 C -52 18 -26 36 0 54 C 26 36 52 18 52 0 C 52 -22 16 -22 0 0 Z"
+          fill="#FFFBF3" opacity="0.85"/>
+  </g>
+</svg>

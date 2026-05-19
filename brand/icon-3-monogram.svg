@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <linearGradient id="bg3" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#3B2A2E"/>
+      <stop offset="1" stop-color="#2A1F22"/>
+    </linearGradient>
+    <linearGradient id="bShine" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FFD3B0"/>
+      <stop offset="1" stop-color="#F5A097"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1024" height="1024" rx="224" ry="224" fill="url(#bg3)"/>
+
+  <g transform="translate(512 540)" font-family="serif">
+    <text x="0" y="0"
+          text-anchor="middle"
+          dominant-baseline="middle"
+          font-size="660"
+          font-weight="600"
+          font-style="italic"
+          fill="url(#bShine)">b</text>
+  </g>
+
+  <circle cx="690" cy="700" r="32" fill="#F5A097"/>
+
+  <text x="512" y="900"
+        text-anchor="middle"
+        font-family="sans-serif"
+        font-size="56"
+        font-weight="500"
+        letter-spacing="20"
+        fill="#FFFBF3"
+        opacity="0.7">BUNDLE</text>
+</svg>
