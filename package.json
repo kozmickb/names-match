@@ -12,6 +12,7 @@
     "db:seed": "tsx db/seed.ts",
     "db:enrich": "tsx db/enrich.ts",
     "db:import": "tsx db/import-names.ts",
+    "db:import-ons": "tsx db/import-ons.ts",
     "db:push": "drizzle-kit push"
   },
   "dependencies": {
@@ -45,6 +46,7 @@
     "eslint-config-next": "16.2.6",
     "tailwindcss": "^4",
     "tsx": "^4.22.0",
-    "typescript": "^5"
+    "typescript": "^5",
+    "xlsx": "^0.18.5"
   }
 }
