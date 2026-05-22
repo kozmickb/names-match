@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Layers, Heart, Settings as SettingsIcon } from "lucide-react";
+import { Layers, Heart, Trophy, Settings as SettingsIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { apiFetch, useUser } from "@/components/user-provider";
 
 const tabs = [
   { href: "/swipe", label: "Swipe", icon: Layers },
   { href: "/matches", label: "Matches", icon: Heart, withCount: true },
+  { href: "/tournament", label: "Rank", icon: Trophy },
   { href: "/settings", label: "Settings", icon: SettingsIcon },
 ];
 
@@ -43,7 +44,7 @@ export function BottomNav() {
       className="sticky bottom-0 left-0 right-0 z-30 border-t border-stone-200/70 bg-amber-50/95 backdrop-blur"
       style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
     >
-      <div className="mx-auto max-w-md grid grid-cols-3">
+      <div className="mx-auto max-w-md grid grid-cols-4">
         {tabs.map((t) => {
           const active = pathname === t.href || (t.href === "/swipe" && pathname === "/");
           const Icon = t.icon;
