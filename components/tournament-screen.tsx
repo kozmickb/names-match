@@ -9,14 +9,22 @@ import Link from "next/link";
 
 type Pair = { left: { id: number; name: string }; right: { id: number; name: string } };
 type Stats = { totalMatches: number; totalPairs: number; donePairs: number };
-type Ranked = {
+type Standing = {
   id: number;
   name: string;
-  karoRate: number | null;
-  lucyRate: number | null;
-  combined: number;
-  totalVotes: number;
+  gender: string | null;
+  played: number;
+  won: number;
+  lost: number;
+  points: number;
+  winRate: number;
+  karoWon: number;
+  karoLost: number;
+  lucyWon: number;
+  lucyLost: number;
 };
+type Standings = { boys: Standing[]; girls: Standing[] };
+type League = "boys" | "girls";
 
 export function TournamentScreen() {
   const { surname } = useUser();
@@ -24,7 +32,8 @@ export function TournamentScreen() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [reason, setReason] = useState<string | null>(null);
   const [voting, setVoting] = useState(false);
-  const [ranking, setRanking] = useState<Ranked[] | null>(null);
+  const [standings, setStandings] = useState<Standings | null>(null);
+  const [league, setLeague] = useState<League>("boys");
   const [showResults, setShowResults] = useState(false);
 
   const loadPair = useCallback(async () => {
@@ -50,10 +59,10 @@ export function TournamentScreen() {
 
   const loadResults = useCallback(async () => {
     try {
-      const r = await apiFetch("/api/tournament/results");
+      const r = await apiFetch("/api/tournament/standings");
       if (!r.ok) return;
-      const j = (await r.json()) as { ranking: Ranked[] };
-      setRanking(j.ranking);
+      const j = (await r.json()) as Standings;
+      setStandings({ boys: j.boys ?? [], girls: j.girls ?? [] });
     } catch {}
   }, []);
 
@@ -169,67 +178,119 @@ export function TournamentScreen() {
         </div>
       ) : (
         <div className="flex-1 overflow-y-auto min-h-0 -mx-5 px-5 pb-6">
-          {ranking === null ? (
-            <div className="space-y-3">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <div key={i} className="h-16 rounded-2xl bg-stone-200/70 animate-pulse" />
-              ))}
-            </div>
-          ) : ranking.length === 0 ? (
-            <EmptyMessage
-              icon="📭"
-              title="No results yet"
-              body="Match some names and vote on a few pairs to see a ranking."
-            />
-          ) : (
-            <ul className="space-y-2">
-              {ranking.map((r, i) => (
-                <li
-                  key={r.id}
-                  className={`rounded-2xl border p-4 flex items-center gap-3 ${
-                    i === 0
-                      ? "border-amber-300 bg-amber-50"
-                      : i < 3
-                      ? "border-stone-200 bg-white"
-                      : "border-stone-200/70 bg-white/70"
+          <div className="mb-4 flex justify-center">
+            <div className="inline-flex rounded-full border border-stone-200 bg-white/80 p-1">
+              {(["boys", "girls"] as League[]).map((g) => (
+                <button
+                  key={g}
+                  type="button"
+                  onClick={() => setLeague(g)}
+                  className={`h-8 px-4 rounded-full text-xs font-semibold transition ${
+                    league === g
+                      ? g === "boys"
+                        ? "bg-sky-500 text-white"
+                        : "bg-rose-500 text-white"
+                      : "text-stone-500"
                   }`}
                 >
-                  <div
-                    className={`h-8 w-8 rounded-full flex items-center justify-center text-sm font-bold ${
-                      i === 0
-                        ? "bg-amber-400 text-white"
-                        : i === 1
-                        ? "bg-stone-400 text-white"
-                        : i === 2
-                        ? "bg-orange-400 text-white"
-                        : "bg-stone-200 text-stone-600"
-                    }`}
-                  >
-                    {i + 1}
-                  </div>
-                  <div className="flex-1">
-                    <div className="font-serif text-xl text-stone-900">
-                      {r.name}
-                      {surname ? <span className="text-stone-500"> {surname}</span> : null}
-                    </div>
-                    <div className="text-xs text-stone-500 mt-0.5 flex gap-3">
-                      <span>
-                        Karo{" "}
-                        {r.karoRate === null ? "—" : `${Math.round(r.karoRate * 100)}%`}
-                      </span>
-                      <span>
-                        Lucy{" "}
-                        {r.lucyRate === null ? "—" : `${Math.round(r.lucyRate * 100)}%`}
-                      </span>
-                      <span className="text-stone-400">{r.totalVotes} votes</span>
-                    </div>
-                  </div>
-                </li>
+                  {g === "boys" ? "👦 Boys" : "👧 Girls"}
+                </button>
               ))}
-            </ul>
+            </div>
+          </div>
+
+          {standings === null ? (
+            <div className="space-y-3">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="h-14 rounded-2xl bg-stone-200/70 animate-pulse" />
+              ))}
+            </div>
+          ) : (
+            <LeagueTable rows={standings[league]} accent={league} surname={surname} />
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+function LeagueTable({
+  rows,
+  accent,
+  surname,
+}: {
+  rows: Standing[];
+  accent: League;
+  surname: string;
+}) {
+  if (rows.length === 0) {
+    return (
+      <EmptyMessage
+        icon="📭"
+        title="No standings yet"
+        body="Match some names and vote on a few pairs to build this league."
+      />
+    );
+  }
+
+  const accentText = accent === "boys" ? "text-sky-600" : "text-rose-600";
+  const cols = "grid grid-cols-[1.75rem_1fr_1.75rem_1.75rem_1.75rem_2.25rem] items-center gap-1";
+
+  return (
+    <div className="overflow-hidden rounded-2xl border border-stone-200 bg-white">
+      <div
+        className={`${cols} px-3 py-2 border-b border-stone-100 text-[10px] font-semibold uppercase tracking-wider text-stone-400`}
+      >
+        <span className="text-center">#</span>
+        <span>Name</span>
+        <span className="text-center">P</span>
+        <span className="text-center">W</span>
+        <span className="text-center">L</span>
+        <span className="text-center">Pts</span>
+      </div>
+      <ul>
+        {rows.map((r, i) => (
+          <li
+            key={r.id}
+            className={`${cols} px-3 py-2.5 border-b border-stone-100 last:border-0 ${
+              i === 0 ? "bg-amber-50/70" : ""
+            }`}
+          >
+            <span className="flex justify-center">
+              <span
+                className={`h-6 w-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                  i === 0
+                    ? "bg-amber-400 text-white"
+                    : i === 1
+                    ? "bg-stone-300 text-stone-700"
+                    : i === 2
+                    ? "bg-orange-300 text-white"
+                    : "text-stone-400"
+                }`}
+              >
+                {i + 1}
+              </span>
+            </span>
+            <span className="min-w-0">
+              <span className="block truncate font-serif text-lg leading-tight text-stone-900">
+                {i === 0 ? "🏆 " : ""}
+                {r.name}
+                {surname ? <span className="text-stone-400"> {surname}</span> : null}
+              </span>
+              <span className="text-[10px] text-stone-400">
+                K {r.karoWon}-{r.karoLost} · L {r.lucyWon}-{r.lucyLost} ·{" "}
+                {r.played ? `${Math.round(r.winRate * 100)}%` : "—"}
+              </span>
+            </span>
+            <span className="text-center text-sm tabular-nums text-stone-500">{r.played}</span>
+            <span className="text-center text-sm tabular-nums text-stone-700">{r.won}</span>
+            <span className="text-center text-sm tabular-nums text-stone-500">{r.lost}</span>
+            <span className={`text-center text-sm font-bold tabular-nums ${accentText}`}>
+              {r.points}
+            </span>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
