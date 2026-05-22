@@ -1,7 +1,17 @@
 import { db, schema } from "@/db/client";
 import { readUserSlug, unauthorized } from "@/lib/api";
+import { sql } from "drizzle-orm";
 
 export const dynamic = "force-dynamic";
+
+// Mirror of the pairing rule: never record a clearly masculine name being
+// pitched against a clearly feminine one. Unisex / untagged act as wildcards.
+function sameGenderAllowed(a: string | null, b: string | null): boolean {
+  return !(
+    (a === "masculine" && b === "feminine") ||
+    (a === "feminine" && b === "masculine")
+  );
+}
 
 export async function POST(req: Request) {
   const slug = await readUserSlug();
@@ -24,6 +34,16 @@ export async function POST(req: Request) {
     winnerId === loserId
   ) {
     return Response.json({ error: "invalid ids" }, { status: 400 });
+  }
+
+  type GenderRow = { id: number; gender: string | null };
+  const genders = (await db.execute<GenderRow>(sql`
+    select id, gender from names where id in (${winnerId}, ${loserId})
+  `)) as unknown as Array<GenderRow>;
+  const winnerGender = genders.find((g) => Number(g.id) === winnerId)?.gender ?? null;
+  const loserGender = genders.find((g) => Number(g.id) === loserId)?.gender ?? null;
+  if (!sameGenderAllowed(winnerGender, loserGender)) {
+    return Response.json({ error: "cross-gender matchup not allowed" }, { status: 400 });
   }
 
   await db
