@@ -1,6 +1,8 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { db, schema } from "@/db/client";
 import { readUserSlug, unauthorized } from "@/lib/api";
+import { enrichAndPersist } from "@/lib/enrich-persist";
+import { enforceAiLimit } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
@@ -24,6 +26,14 @@ export async function POST(req: Request) {
     return Response.json(
       { error: "AI is not configured. Set ANTHROPIC_API_KEY on the server." },
       { status: 503 }
+    );
+  }
+
+  const limit = await enforceAiLimit(slug, "generate");
+  if (!limit.ok) {
+    return Response.json(
+      { error: `Daily generate limit reached (${limit.limit}/day). Try again tomorrow.` },
+      { status: 429 }
     );
   }
 
@@ -106,6 +116,9 @@ export async function POST(req: Request) {
     .values(cleaned.map((name) => ({ name, gender })))
     .onConflictDoNothing({ target: schema.names.name })
     .returning({ id: schema.names.id, name: schema.names.name });
+
+  // Pre-enrich the new names in one batched call so swiping stays cache-only.
+  await enrichAndPersist(client, inserted);
 
   return Response.json({
     requested: count,

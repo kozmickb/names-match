@@ -1,6 +1,8 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { db, schema } from "@/db/client";
 import { readUserSlug, unauthorized } from "@/lib/api";
+import { enrichAndPersist } from "@/lib/enrich-persist";
+import { enforceAiLimit } from "@/lib/rate-limit";
 import { and, desc, eq } from "drizzle-orm";
 
 export const dynamic = "force-dynamic";
@@ -23,6 +25,14 @@ export async function POST(req: Request) {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
     return Response.json({ error: "AI is not configured" }, { status: 503 });
+  }
+
+  const limit = await enforceAiLimit(slug, "suggest");
+  if (!limit.ok) {
+    return Response.json(
+      { error: `Daily suggest limit reached (${limit.limit}/day). Try again tomorrow.` },
+      { status: 429 }
+    );
   }
 
   let body: { count?: unknown; gender?: unknown };
@@ -124,6 +134,9 @@ export async function POST(req: Request) {
     )
     .onConflictDoNothing({ target: schema.names.name })
     .returning({ id: schema.names.id, name: schema.names.name });
+
+  // Pre-enrich the new names in one batched call so swiping stays cache-only.
+  await enrichAndPersist(client, inserted);
 
   return Response.json({
     requested: count,
