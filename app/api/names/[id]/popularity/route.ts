@@ -41,10 +41,13 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
   }
 
   const client = new Anthropic({ apiKey });
-  let parsed: { rank: number | null; blurb: string | null } = { rank: null, blurb: null };
 
+  // Reach the model first. If the call itself fails (rate limit, usage cap,
+  // network), return WITHOUT persisting so the name is retried later — never
+  // cache a blank caused by a transient outage.
+  let response;
   try {
-    const response = await client.messages.create({
+    response = await client.messages.create({
       model: "claude-haiku-4-5-20251001",
       max_tokens: 200,
       system: [
@@ -59,6 +62,13 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
       ].join(" "),
       messages: [{ role: "user", content: row.name }],
     });
+  } catch {
+    return Response.json({ rank: null, blurb: null, retryable: true });
+  }
+
+  // The model responded — cache its answer even if a field is null.
+  let parsed: { rank: number | null; blurb: string | null } = { rank: null, blurb: null };
+  try {
     const raw = response.content.map((c) => (c.type === "text" ? c.text : "")).join("");
     const match = raw.match(/\{[\s\S]*\}/);
     const json = JSON.parse(match ? match[0] : raw);

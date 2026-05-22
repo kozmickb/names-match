@@ -10,6 +10,8 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx db/migrate.ts",
     "db:seed": "tsx db/seed.ts",
+    "db:enrich": "tsx db/enrich.ts",
+    "db:import": "tsx db/import-names.ts",
     "db:push": "drizzle-kit push"
   },
   "dependencies": {

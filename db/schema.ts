@@ -38,6 +38,19 @@ export const tournamentVotes = pgTable(
   })
 );
 
+export const aiCalls = pgTable(
+  "ai_calls",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    userSlug: userSlugEnum("user_slug").notNull(),
+    kind: text("kind").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    byUserKind: index("ai_calls_user_kind_idx").on(t.userSlug, t.kind, t.createdAt),
+  })
+);
+
 export const pushSubscriptions = pgTable(
   "push_subscriptions",
   {
