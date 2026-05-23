@@ -36,6 +36,10 @@ yarn-error.log*
 # scraped research (3rd-party review content, not for the repo)
 .firecrawl/
 
+# graphify knowledge-graph output (regenerable via /graphify)
+graphify-out/
+.graphify_*
+
 # vercel
 .vercel
 
