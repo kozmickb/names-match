@@ -1,6 +1,6 @@
 import { db, schema } from "@/db/client";
 import { readUserSlug, unauthorized } from "@/lib/api";
-import { sql } from "drizzle-orm";
+import { and, eq, or, sql } from "drizzle-orm";
 
 export const dynamic = "force-dynamic";
 
@@ -46,16 +46,29 @@ export async function POST(req: Request) {
     return Response.json({ error: "cross-gender matchup not allowed" }, { status: 400 });
   }
 
-  await db
-    .insert(schema.tournamentVotes)
-    .values({ userSlug: slug, winnerNameId: winnerId, loserNameId: loserId })
-    .onConflictDoNothing({
-      target: [
-        schema.tournamentVotes.userSlug,
-        schema.tournamentVotes.winnerNameId,
-        schema.tournamentVotes.loserNameId,
-      ],
-    });
+  // One vote per unordered pair per user: clear any prior result for this pair
+  // (either direction) so re-challenging a duel cleanly flips the outcome
+  // instead of recording a contradictory second vote.
+  await db.transaction(async (tx) => {
+    await tx.delete(schema.tournamentVotes).where(
+      and(
+        eq(schema.tournamentVotes.userSlug, slug),
+        or(
+          and(
+            eq(schema.tournamentVotes.winnerNameId, winnerId),
+            eq(schema.tournamentVotes.loserNameId, loserId)
+          ),
+          and(
+            eq(schema.tournamentVotes.winnerNameId, loserId),
+            eq(schema.tournamentVotes.loserNameId, winnerId)
+          )
+        )
+      )
+    );
+    await tx
+      .insert(schema.tournamentVotes)
+      .values({ userSlug: slug, winnerNameId: winnerId, loserNameId: loserId });
+  });
 
   return Response.json({ ok: true });
 }
