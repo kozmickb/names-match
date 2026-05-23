@@ -1,5 +1,6 @@
 import { db, schema } from "@/db/client";
 import { readUserSlug, unauthorized } from "@/lib/api";
+import { ORIGIN_GROUP_KEYS } from "@/lib/origin-groups";
 import { eq, sql } from "drizzle-orm";
 
 export const dynamic = "force-dynamic";
@@ -12,12 +13,21 @@ export async function GET(request: Request) {
   const limit = Math.min(Math.max(Number(url.searchParams.get("limit") ?? 30), 1), 100);
 
   const [state] = await db
-    .select({ seed: schema.appState.shuffleSeed })
+    .select({
+      seed: schema.appState.shuffleSeed,
+      excludedOriginGroups: schema.appState.excludedOriginGroups,
+    })
     .from(schema.appState)
     .where(eq(schema.appState.id, 1))
     .limit(1);
   const seed = Number(state?.seed ?? 0);
   const shuffled = seed !== 0;
+
+  // Shared "house rules": origin groups excluded from the deck (allowlist-validated).
+  const excludedGroups = (state?.excludedOriginGroups ?? []).filter((g) => ORIGIN_GROUP_KEYS.has(g));
+  const originFilter = excludedGroups.length
+    ? sql.raw(`and n.origin_group not in (${excludedGroups.map((g) => `'${g}'`).join(",")})`)
+    : sql``;
 
   const [profile] = await db
     .select({
@@ -62,36 +72,26 @@ export async function GET(request: Request) {
     )
     ${variantsFilter}
     ${genderFilter}
+    ${originFilter}
     order by ${orderClause} asc
     limit ${limit}
   `)) as unknown as Array<{ id: number; name: string }>;
 
-  const totalQ = sql<number>`count(*)::int`;
-  let totalRow: { total: number };
-  if (filter === "masculine") {
-    [totalRow] = await db
-      .select({ total: totalQ })
-      .from(schema.names)
-      .where(sql`gender = 'masculine' or gender = 'unisex' or gender is null`);
-  } else if (filter === "feminine") {
-    [totalRow] = await db
-      .select({ total: totalQ })
-      .from(schema.names)
-      .where(sql`gender = 'feminine' or gender = 'unisex' or gender is null`);
-  } else if (filter === "unisex") {
-    [totalRow] = await db
-      .select({ total: totalQ })
-      .from(schema.names)
-      .where(sql`gender = 'unisex'`);
-  } else {
-    [totalRow] = await db.select({ total: totalQ }).from(schema.names);
-  }
+  // Total pool size under the active gender + origin filters.
+  const [totalRow] = (await db.execute<{ total: number }>(sql`
+    select count(*)::int as total
+    from names n
+    where true
+    ${genderFilter}
+    ${originFilter}
+  `)) as unknown as Array<{ total: number }>;
 
   return Response.json({
     names: rows.map((r) => ({ id: Number(r.id), name: r.name })),
-    total: totalRow.total,
+    total: Number(totalRow?.total ?? 0),
     shuffled,
     autoPassVariants: autoPass,
     genderFilter: filter,
+    excludedOriginGroups: excludedGroups,
   });
 }

@@ -14,7 +14,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { RefreshCw, LogOut, Trash2, Shuffle, ListOrdered, Sparkles, Bell, BellOff } from "lucide-react";
+import { RefreshCw, LogOut, Trash2, Shuffle, ListOrdered, Sparkles, Bell, BellOff, Globe } from "lucide-react";
 import {
   currentSubscription,
   pushSupported,
@@ -60,6 +60,10 @@ export function SettingsScreen() {
   const [autoPassBusy, setAutoPassBusy] = useState(false);
   const [filter, setFilter] = useState<"all" | "masculine" | "feminine" | "unisex">("all");
   const [filterBusy, setFilterBusy] = useState(false);
+  const [origins, setOrigins] = useState<
+    { key: string; label: string; count: number; excluded: boolean }[] | null
+  >(null);
+  const [originBusy, setOriginBusy] = useState(false);
   const [pushEnabled, setPushEnabled] = useState<boolean | null>(null);
   const [pushBusy, setPushBusy] = useState(false);
   const [pushAvailable] = useState<boolean>(() => pushSupported());
@@ -78,6 +82,7 @@ export function SettingsScreen() {
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- initial data fetch
     load();
   }, [load]);
 
@@ -101,7 +106,38 @@ export function SettingsScreen() {
         if (j) setFilter(j.genderFilter);
       })
       .catch(() => {});
+    apiFetch("/api/origin-filter")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j: { groups: NonNullable<typeof origins> } | null) => {
+        if (j) setOrigins(j.groups);
+      })
+      .catch(() => {});
   }, []);
+
+  const toggleOrigin = async (key: string) => {
+    if (!origins || originBusy) return;
+    const next = origins.map((g) => (g.key === key ? { ...g, excluded: !g.excluded } : g));
+    const excluded = next.filter((g) => g.excluded).map((g) => g.key);
+    if (excluded.length >= next.length) {
+      toast.error("Keep at least one origin showing.");
+      return;
+    }
+    const prev = origins;
+    setOrigins(next);
+    setOriginBusy(true);
+    try {
+      const r = await apiFetch("/api/origin-filter", {
+        method: "PUT",
+        body: JSON.stringify({ excluded }),
+      });
+      if (!r.ok) throw new Error();
+    } catch {
+      setOrigins(prev);
+      toast.error("Could not save origins.");
+    } finally {
+      setOriginBusy(false);
+    }
+  };
 
   const setGenderFilter = async (next: typeof filter) => {
     if (next === filter) return;
@@ -404,6 +440,41 @@ export function SettingsScreen() {
         </div>
         <p className="mt-2 text-[11px] text-stone-500">
           Picking Boys or Girls also includes unisex names. Saved per user.
+        </p>
+      </section>
+
+      <section className="mt-5 rounded-3xl border border-stone-200/70 bg-white/70 p-5">
+        <div className="flex items-center gap-2 text-stone-800 font-medium">
+          <Globe size={16} />
+          <span className="font-serif text-base">Origins</span>
+        </div>
+        <p className="mt-2 text-sm text-stone-600">
+          Hide name origins you do not want. Tap to toggle — shared with your partner.
+        </p>
+        {origins === null ? (
+          <div className="mt-3 h-24 rounded-2xl bg-stone-200/60 animate-pulse" />
+        ) : (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {origins.map((g) => (
+              <button
+                key={g.key}
+                type="button"
+                onClick={() => toggleOrigin(g.key)}
+                disabled={originBusy}
+                aria-pressed={!g.excluded}
+                className={`rounded-full border px-3 min-h-[40px] text-xs font-medium transition ${
+                  g.excluded
+                    ? "border-stone-200 bg-stone-100 text-stone-400 line-through"
+                    : "border-emerald-300 bg-emerald-50 text-emerald-800"
+                }`}
+              >
+                {g.label} <span className="opacity-60">{g.count}</span>
+              </button>
+            ))}
+          </div>
+        )}
+        <p className="mt-2 text-[11px] text-stone-500">
+          Greyed-out origins are removed from both of your swipe decks.
         </p>
       </section>
 

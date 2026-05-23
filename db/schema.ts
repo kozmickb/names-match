@@ -13,6 +13,7 @@ export const names = pgTable("names", {
   ukBlurb: text("uk_blurb"),
   popularityFetchedAt: timestamp("popularity_fetched_at", { withTimezone: true }),
   gender: text("gender"),
+  originGroup: text("origin_group"),
 });
 
 export const userProfiles = pgTable("user_profiles", {
@@ -70,6 +71,8 @@ export const appState = pgTable("app_state", {
   id: integer("id").primaryKey().default(1),
   shuffleSeed: bigint("shuffle_seed", { mode: "number" }).notNull().default(0),
   shuffleUpdatedAt: timestamp("shuffle_updated_at", { withTimezone: true }).defaultNow().notNull(),
+  // Shared "house rules" — origin-group keys excluded from the swipe deck.
+  excludedOriginGroups: jsonb("excluded_origin_groups").$type<string[]>().notNull().default([]),
 });
 
 export const swipes = pgTable(
