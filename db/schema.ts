@@ -89,3 +89,41 @@ export const swipes = pgTable(
     byName: index("swipes_name_idx").on(t.nameId),
   })
 );
+
+export const knockouts = pgTable(
+  "knockouts",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    gender: text("gender").notNull(),
+    size: integer("size").notNull(),
+    status: text("status").notNull().default("active"),
+    championNameId: bigint("champion_name_id", { mode: "number" }).references(() => names.id, {
+      onDelete: "set null",
+    }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    genderUniq: uniqueIndex("knockout_gender_uniq").on(t.gender),
+  })
+);
+
+export const knockoutMatches = pgTable(
+  "knockout_matches",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    knockoutId: bigint("knockout_id", { mode: "number" })
+      .notNull()
+      .references(() => knockouts.id, { onDelete: "cascade" }),
+    round: integer("round").notNull(),
+    slot: integer("slot").notNull(),
+    nameAId: bigint("name_a_id", { mode: "number" }).references(() => names.id, { onDelete: "set null" }),
+    nameBId: bigint("name_b_id", { mode: "number" }).references(() => names.id, { onDelete: "set null" }),
+    winnerNameId: bigint("winner_name_id", { mode: "number" }).references(() => names.id, {
+      onDelete: "set null",
+    }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    byKo: index("knockout_match_ko_idx").on(t.knockoutId, t.round, t.slot),
+  })
+);
