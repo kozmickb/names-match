@@ -13,6 +13,7 @@
     "db:enrich": "tsx db/enrich.ts",
     "db:import": "tsx db/import-names.ts",
     "db:import-ons": "tsx db/import-ons.ts",
+    "db:group-origins": "tsx db/group-origins.ts",
     "db:push": "drizzle-kit push"
   },
   "dependencies": {

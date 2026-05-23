@@ -1,0 +1,148 @@
+export type OriginGroup = { key: string; label: string };
+
+// Broad culture groups the 461 raw origins collapse into, for a tractable filter.
+export const ORIGIN_GROUPS: OriginGroup[] = [
+  { key: "english", label: "English" },
+  { key: "celtic", label: "Celtic" },
+  { key: "latin_romance", label: "Latin & Romance" },
+  { key: "germanic_norse", label: "Germanic & Norse" },
+  { key: "greek", label: "Greek" },
+  { key: "hebrew", label: "Hebrew & Biblical" },
+  { key: "arabic_persian", label: "Arabic & Persian" },
+  { key: "south_asian", label: "Indian & South Asian" },
+  { key: "african", label: "African" },
+  { key: "east_asian", label: "East Asian" },
+  { key: "slavic", label: "Slavic" },
+  { key: "other", label: "Other & Unknown" },
+];
+
+export const ORIGIN_GROUP_KEYS = new Set(ORIGIN_GROUPS.map((g) => g.key));
+
+// Lowercased first-origin token -> group key. The long tail falls through to
+// "other", which also covers untagged names.
+const MAP: Record<string, string> = {
+  english: "english",
+  "old english": "english",
+  "anglo-saxon": "english",
+  "anglo saxon": "english",
+  american: "english",
+  british: "english",
+
+  irish: "celtic",
+  scottish: "celtic",
+  welsh: "celtic",
+  gaelic: "celtic",
+  "scottish gaelic": "celtic",
+  "irish gaelic": "celtic",
+  cornish: "celtic",
+  breton: "celtic",
+  manx: "celtic",
+
+  latin: "latin_romance",
+  italian: "latin_romance",
+  spanish: "latin_romance",
+  french: "latin_romance",
+  "old french": "latin_romance",
+  portuguese: "latin_romance",
+  romanian: "latin_romance",
+  catalan: "latin_romance",
+  galician: "latin_romance",
+  occitan: "latin_romance",
+  roman: "latin_romance",
+
+  germanic: "germanic_norse",
+  "old germanic": "germanic_norse",
+  german: "germanic_norse",
+  "old german": "germanic_norse",
+  "old norse": "germanic_norse",
+  norse: "germanic_norse",
+  scandinavian: "germanic_norse",
+  swedish: "germanic_norse",
+  norwegian: "germanic_norse",
+  danish: "germanic_norse",
+  dutch: "germanic_norse",
+  icelandic: "germanic_norse",
+  frisian: "germanic_norse",
+  gothic: "germanic_norse",
+  flemish: "germanic_norse",
+
+  greek: "greek",
+  "ancient greek": "greek",
+
+  hebrew: "hebrew",
+  aramaic: "hebrew",
+  biblical: "hebrew",
+  yiddish: "hebrew",
+
+  arabic: "arabic_persian",
+  persian: "arabic_persian",
+  turkish: "arabic_persian",
+  farsi: "arabic_persian",
+  ottoman: "arabic_persian",
+  kurdish: "arabic_persian",
+  azerbaijani: "arabic_persian",
+
+  sanskrit: "south_asian",
+  hindi: "south_asian",
+  punjabi: "south_asian",
+  tamil: "south_asian",
+  gujarati: "south_asian",
+  bengali: "south_asian",
+  urdu: "south_asian",
+  marathi: "south_asian",
+  telugu: "south_asian",
+  kannada: "south_asian",
+  malayalam: "south_asian",
+  nepali: "south_asian",
+  sinhala: "south_asian",
+  indian: "south_asian",
+
+  yoruba: "african",
+  igbo: "african",
+  amharic: "african",
+  swahili: "african",
+  zulu: "african",
+  hausa: "african",
+  akan: "african",
+  xhosa: "african",
+  somali: "african",
+  shona: "african",
+  ewe: "african",
+  twi: "african",
+  oromo: "african",
+  kikuyu: "african",
+  african: "african",
+
+  japanese: "east_asian",
+  chinese: "east_asian",
+  korean: "east_asian",
+  vietnamese: "east_asian",
+  mandarin: "east_asian",
+  cantonese: "east_asian",
+  thai: "east_asian",
+  khmer: "east_asian",
+  lao: "east_asian",
+  burmese: "east_asian",
+  mongolian: "east_asian",
+  tibetan: "east_asian",
+
+  slavic: "slavic",
+  russian: "slavic",
+  polish: "slavic",
+  czech: "slavic",
+  ukrainian: "slavic",
+  serbian: "slavic",
+  croatian: "slavic",
+  bulgarian: "slavic",
+  slovak: "slavic",
+  slovenian: "slavic",
+  macedonian: "slavic",
+  belarusian: "slavic",
+  bosnian: "slavic",
+};
+
+export function originGroup(origin: string | null | undefined): string {
+  if (!origin) return "other";
+  const first = origin.split(",")[0].trim().toLowerCase();
+  return MAP[first] ?? "other";
+}
