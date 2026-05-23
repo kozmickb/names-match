@@ -33,6 +33,9 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 
+# scraped research (3rd-party review content, not for the repo)
+.firecrawl/
+
 # vercel
 .vercel
 
