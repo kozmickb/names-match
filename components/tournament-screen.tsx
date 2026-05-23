@@ -3,12 +3,15 @@
 import { apiFetch, useUser } from "@/components/user-provider";
 import { useCallback, useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Swords, X, Trophy } from "lucide-react";
+import { ArrowLeft, Swords, X, Trophy, Crown, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
+import { roundLabel } from "@/lib/bracket";
+import { Confetti } from "@/components/confetti";
 
 type NameRef = { id: number; name: string };
 type Pair = { left: NameRef; right: NameRef };
+type Duel = Pair & { matchId?: number };
 type Stats = {
   totalMatches: number;
   totalPairs: number;
@@ -32,8 +35,20 @@ type Standing = {
 type Standings = { boys: Standing[]; girls: Standing[] };
 type League = "boys" | "girls";
 
-// How many of the top of the table "qualify" — a clean power of two for a
-// future knockout bracket.
+type BracketMatch = {
+  id: number;
+  round: number;
+  slot: number;
+  a: NameRef | null;
+  b: NameRef | null;
+  winner: NameRef | null;
+  ready: boolean;
+};
+type Bracket = {
+  knockout: { id: number; gender: string; size: number; status: string; champion: NameRef | null };
+  rounds: { round: number; matches: BracketMatch[] }[];
+};
+
 function qualifyCount(n: number): number {
   if (n >= 8) return 8;
   if (n >= 4) return 4;
@@ -44,12 +59,15 @@ function qualifyCount(n: number): number {
 export function TournamentScreen() {
   const { surname } = useUser();
   const [league, setLeague] = useState<League>("boys");
+  const [view, setView] = useState<"table" | "bracket">("table");
   const [standings, setStandings] = useState<Standings | null>(null);
   const [stats, setStats] = useState<Stats | null>(null);
   const [nextPair, setNextPair] = useState<Pair | null>(null);
-  const [duel, setDuel] = useState<Pair | null>(null);
+  const [bracket, setBracket] = useState<Bracket | null>(null);
+  const [duel, setDuel] = useState<Duel | null>(null);
   const [selected, setSelected] = useState<NameRef | null>(null);
   const [voting, setVoting] = useState(false);
+  const [starting, setStarting] = useState(false);
 
   const loadStandings = useCallback(async () => {
     try {
@@ -81,6 +99,16 @@ export function TournamentScreen() {
     } catch {}
   }, []);
 
+  const loadBracket = useCallback(async (lg: League) => {
+    try {
+      const r = await apiFetch(`/api/tournament/knockout?gender=${lg}`);
+      if (!r.ok) return;
+      const j = (await r.json()) as { bracket: Bracket | null };
+      setBracket(j.bracket);
+      setView(j.bracket ? "bracket" : "table");
+    } catch {}
+  }, []);
+
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- initial data fetch
     loadStandings();
@@ -89,9 +117,10 @@ export function TournamentScreen() {
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- refetch on league change
     loadPair(league);
-  }, [league, loadPair]);
+    loadBracket(league);
+  }, [league, loadPair, loadBracket]);
 
-  const vote = async (winner: NameRef, loser: NameRef) => {
+  const leagueVote = async (winner: NameRef, loser: NameRef) => {
     setVoting(true);
     try {
       const r = await apiFetch("/api/tournament/vote", {
@@ -107,6 +136,53 @@ export function TournamentScreen() {
       toast.error("Could not save vote.");
     } finally {
       setVoting(false);
+    }
+  };
+
+  const koVote = async (matchId: number, winner: NameRef) => {
+    setVoting(true);
+    try {
+      const r = await apiFetch("/api/tournament/knockout/vote", {
+        method: "POST",
+        body: JSON.stringify({ matchId, winnerId: winner.id }),
+      });
+      if (!r.ok) throw new Error();
+      const j = (await r.json()) as { bracket: Bracket | null };
+      setBracket(j.bracket);
+      setDuel(null);
+      if (j.bracket?.knockout.status === "complete") {
+        toast.success(`🏆 ${j.bracket.knockout.champion?.name} wins!`, { duration: 1600 });
+      } else {
+        toast.success(`Picked ${winner.name}`, { duration: 900 });
+      }
+    } catch {
+      toast.error("Could not save pick.");
+    } finally {
+      setVoting(false);
+    }
+  };
+
+  const pick = (winner: NameRef, loser: NameRef) => {
+    if (duel?.matchId) koVote(duel.matchId, winner);
+    else leagueVote(winner, loser);
+  };
+
+  const startKnockout = async () => {
+    setStarting(true);
+    try {
+      const r = await apiFetch("/api/tournament/knockout", {
+        method: "POST",
+        body: JSON.stringify({ gender: league }),
+      });
+      if (!r.ok) throw new Error();
+      const j = (await r.json()) as { bracket: Bracket | null };
+      setBracket(j.bracket);
+      setView("bracket");
+      toast.success("Knockouts started!", { duration: 1000 });
+    } catch {
+      toast.error("Could not start the knockouts.");
+    } finally {
+      setStarting(false);
     }
   };
 
@@ -127,6 +203,8 @@ export function TournamentScreen() {
   const qCount = rows ? qualifyCount(rows.length) : 0;
   const complete = stats?.reason === "complete";
   const notEnough = stats?.reason === "not_enough_matches";
+  const canStart = !!rows && rows.length >= 2;
+  const champion = bracket?.knockout.status === "complete" ? bracket.knockout.champion : null;
 
   return (
     <div className="flex-1 flex flex-col min-h-0">
@@ -141,9 +219,14 @@ export function TournamentScreen() {
           </Link>
           <div className="text-center flex-1 px-2">
             <h1 className="font-serif text-2xl text-stone-800">Top picks</h1>
-            {stats && !notEnough && (
+            {stats && !notEnough && view === "table" && (
               <p className="text-xs text-stone-500 mt-0.5">
                 Group stage · {stats.donePairs}/{stats.totalPairs} matches played
+              </p>
+            )}
+            {view === "bracket" && bracket && (
+              <p className="text-xs text-stone-500 mt-0.5">
+                Knockouts · {bracket.knockout.size} qualified
               </p>
             )}
           </div>
@@ -173,6 +256,31 @@ export function TournamentScreen() {
             ))}
           </div>
         </div>
+
+        {bracket && (
+          <div className="mb-2 flex justify-center">
+            <div className="inline-flex rounded-full bg-stone-100 p-0.5 text-[11px] font-medium">
+              <button
+                type="button"
+                onClick={() => setView("table")}
+                className={`h-7 px-3 rounded-full transition ${
+                  view === "table" ? "bg-white shadow-sm text-stone-800" : "text-stone-500"
+                }`}
+              >
+                📊 Table
+              </button>
+              <button
+                type="button"
+                onClick={() => setView("bracket")}
+                className={`h-7 px-3 rounded-full transition ${
+                  view === "bracket" ? "bg-white shadow-sm text-stone-800" : "text-stone-500"
+                }`}
+              >
+                🏆 Bracket
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="flex-1 overflow-y-auto min-h-0 px-5 pb-4">
@@ -187,6 +295,13 @@ export function TournamentScreen() {
             icon="🤝"
             title="Not enough matches yet"
             body="You need at least two mutual matches in this league before you can run a tournament."
+          />
+        ) : view === "bracket" && bracket ? (
+          <BracketView
+            bracket={bracket}
+            surname={surname}
+            champion={champion}
+            onPickMatch={(m) => m.a && m.b && setDuel({ left: m.a, right: m.b, matchId: m.id })}
           />
         ) : rows && rows.length > 0 ? (
           <>
@@ -211,28 +326,47 @@ export function TournamentScreen() {
         )}
       </div>
 
-      {rows && rows.length > 0 && (
-        <div className="px-5 pb-3 pt-2 border-t border-stone-200/70 bg-amber-50/60 backdrop-blur">
-          {complete ? (
-            <div className="text-center">
-              <p className="text-sm font-medium text-stone-700">
-                <Trophy size={14} className="inline -mt-0.5 mr-1 text-amber-500" />
-                Group stage complete
-              </p>
-              <p className="text-[11px] text-stone-500 mt-0.5">
-                Knockouts coming soon — tap two names above to replay any duel.
-              </p>
-            </div>
-          ) : (
+      {!notEnough && (rows?.length ?? 0) > 0 && (
+        <div className="px-5 pb-3 pt-2 border-t border-stone-200/70 bg-amber-50/60 backdrop-blur space-y-2">
+          {view === "bracket" ? (
             <button
               type="button"
-              onClick={() => nextPair && setDuel(nextPair)}
-              disabled={voting || !nextPair}
-              className="w-full h-12 rounded-full bg-stone-800 text-white text-sm font-semibold shadow-md active:scale-[0.98] disabled:opacity-50 transition inline-flex items-center justify-center gap-2"
+              onClick={startKnockout}
+              disabled={starting}
+              className="w-full h-11 rounded-full border border-stone-300 bg-white/80 text-stone-700 text-sm font-medium active:scale-[0.98] disabled:opacity-50 transition inline-flex items-center justify-center gap-2"
             >
-              <Swords size={16} />
-              Play next match
+              <RotateCcw size={15} />
+              {champion ? "Play again" : "Restart bracket"}
             </button>
+          ) : (
+            <>
+              {!complete && (
+                <button
+                  type="button"
+                  onClick={() => nextPair && setDuel(nextPair)}
+                  disabled={voting || !nextPair}
+                  className="w-full h-12 rounded-full bg-stone-800 text-white text-sm font-semibold shadow-md active:scale-[0.98] disabled:opacity-50 transition inline-flex items-center justify-center gap-2"
+                >
+                  <Swords size={16} />
+                  Play next match
+                </button>
+              )}
+              {canStart && (
+                <button
+                  type="button"
+                  onClick={startKnockout}
+                  disabled={starting}
+                  className={`w-full rounded-full text-sm font-semibold active:scale-[0.98] disabled:opacity-50 transition inline-flex items-center justify-center gap-2 ${
+                    complete
+                      ? "h-12 bg-amber-500 text-white shadow-md"
+                      : "h-11 border border-amber-300 bg-amber-50 text-amber-800"
+                  }`}
+                >
+                  <Trophy size={16} />
+                  {bracket ? "Restart knockouts" : "Start the knockouts"}
+                </button>
+              )}
+            </>
           )}
         </div>
       )}
@@ -243,12 +377,95 @@ export function TournamentScreen() {
             duel={duel}
             surname={surname}
             voting={voting}
-            onPick={vote}
+            onPick={pick}
             onClose={() => setDuel(null)}
           />
         )}
       </AnimatePresence>
     </div>
+  );
+}
+
+function BracketView({
+  bracket,
+  surname,
+  champion,
+  onPickMatch,
+}: {
+  bracket: Bracket;
+  surname: string;
+  champion: NameRef | null;
+  onPickMatch: (m: BracketMatch) => void;
+}) {
+  const size = bracket.knockout.size;
+  return (
+    <div className="space-y-5">
+      {champion && (
+        <div className="relative overflow-visible rounded-2xl border border-amber-300 bg-gradient-to-br from-amber-100 to-rose-100 p-5 text-center">
+          <Confetti />
+          <Crown className="mx-auto text-amber-500" size={28} />
+          <p className="mt-1 text-[11px] uppercase tracking-widest text-amber-700">Champion</p>
+          <p className="font-serif text-3xl text-stone-900">
+            {champion.name}
+            {surname ? <span className="text-stone-500"> {surname}</span> : null}
+          </p>
+        </div>
+      )}
+      {bracket.rounds.map((r) => (
+        <div key={r.round}>
+          <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-stone-400">
+            {roundLabel(r.round, size)}
+          </p>
+          <div className="space-y-2.5">
+            {r.matches.map((m) => (
+              <MatchCard key={m.id} match={m} onPick={() => onPickMatch(m)} />
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function MatchSlot({
+  name,
+  isWinner,
+  decided,
+}: {
+  name: NameRef | null;
+  isWinner: boolean;
+  decided: boolean;
+}) {
+  return (
+    <div className={`flex items-center justify-between px-3 py-2 ${decided && !isWinner ? "opacity-40" : ""}`}>
+      <span className={`font-serif text-lg ${isWinner ? "text-stone-900 font-medium" : "text-stone-700"}`}>
+        {name ? name.name : <span className="text-stone-300">—</span>}
+      </span>
+      {isWinner && <Trophy size={14} className="text-amber-500" />}
+    </div>
+  );
+}
+
+function MatchCard({ match, onPick }: { match: BracketMatch; onPick: () => void }) {
+  const decided = !!match.winner;
+  return (
+    <button
+      type="button"
+      onClick={onPick}
+      disabled={!match.ready}
+      className={`w-full rounded-2xl border bg-white text-left transition ${
+        match.ready ? "border-stone-300 shadow-sm active:scale-[0.99]" : "border-stone-200/70"
+      }`}
+    >
+      <MatchSlot name={match.a} isWinner={match.winner?.id === match.a?.id} decided={decided} />
+      <div className="border-t border-stone-100" />
+      <MatchSlot name={match.b} isWinner={match.winner?.id === match.b?.id} decided={decided} />
+      {match.ready && (
+        <div className="px-3 pb-1.5 text-[10px] font-medium uppercase tracking-wider text-emerald-500">
+          Tap to decide
+        </div>
+      )}
+    </button>
   );
 }
 
@@ -357,7 +574,7 @@ function DuelOverlay({
   onPick,
   onClose,
 }: {
-  duel: Pair;
+  duel: Duel;
   surname: string;
   voting: boolean;
   onPick: (winner: NameRef, loser: NameRef) => void;
@@ -380,7 +597,9 @@ function DuelOverlay({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between mb-4">
-          <span className="text-xs uppercase tracking-widest text-stone-500">Which do you prefer?</span>
+          <span className="text-xs uppercase tracking-widest text-stone-500">
+            {duel.matchId ? "Decide this tie together" : "Which do you prefer?"}
+          </span>
           <button
             type="button"
             onClick={onClose}
