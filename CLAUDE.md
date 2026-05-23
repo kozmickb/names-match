@@ -43,6 +43,7 @@ across iOS/Android, so **cross-platform parity + bulletproof sync are first-clas
 ## Read these before continuing
 - `docs/onboarding-multicouple-plan.md` — tenancy/data model, auth, onboarding, phasing, native direction (§8).
 - `docs/competitive-findings.md` — market pain points, our moat, gaps to fill, what to lead with.
+- `graphify-out/GRAPH_REPORT.md` — knowledge graph of this codebase (god nodes, communities, surprising links). Regenerate with `/graphify`. `graphify-out/` is git-ignored.
 
 ## Working conventions (this session's pattern)
 - Branch off `main` → commit → PR → squash-merge → auto-deploy. Verify with `tsc` +
