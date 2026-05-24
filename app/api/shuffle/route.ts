@@ -1,17 +1,17 @@
 import { db, schema } from "@/db/client";
-import { readUserSlug, unauthorized } from "@/lib/api";
-import { eq, sql } from "drizzle-orm";
+import { readMember, unauthorized } from "@/lib/api";
+import { eq } from "drizzle-orm";
 
 export const dynamic = "force-dynamic";
 
-async function getState() {
+async function getState(coupleId: string) {
   const [row] = await db
     .select({
-      seed: schema.appState.shuffleSeed,
-      updatedAt: schema.appState.shuffleUpdatedAt,
+      seed: schema.coupleState.shuffleSeed,
+      updatedAt: schema.coupleState.shuffleUpdatedAt,
     })
-    .from(schema.appState)
-    .where(eq(schema.appState.id, 1))
+    .from(schema.coupleState)
+    .where(eq(schema.coupleState.coupleId, coupleId))
     .limit(1);
   const seed = Number(row?.seed ?? 0);
   return {
@@ -22,14 +22,14 @@ async function getState() {
 }
 
 export async function GET() {
-  const slug = await readUserSlug();
-  if (!slug) return unauthorized();
-  return Response.json(await getState());
+  const member = await readMember();
+  if (!member) return unauthorized();
+  return Response.json(await getState(member.coupleId));
 }
 
 export async function POST(request: Request) {
-  const slug = await readUserSlug();
-  if (!slug) return unauthorized();
+  const member = await readMember();
+  if (!member) return unauthorized();
 
   let body: { enabled?: unknown };
   try {
@@ -47,13 +47,13 @@ export async function POST(request: Request) {
     newSeed = r;
   }
 
-  await db.execute(sql`
-    insert into app_state (id, shuffle_seed, shuffle_updated_at)
-    values (1, ${newSeed}, now())
-    on conflict (id) do update set
-      shuffle_seed = excluded.shuffle_seed,
-      shuffle_updated_at = excluded.shuffle_updated_at
-  `);
+  await db
+    .insert(schema.coupleState)
+    .values({ coupleId: member.coupleId, shuffleSeed: newSeed })
+    .onConflictDoUpdate({
+      target: schema.coupleState.coupleId,
+      set: { shuffleSeed: newSeed, shuffleUpdatedAt: new Date() },
+    });
 
-  return Response.json(await getState());
+  return Response.json(await getState(member.coupleId));
 }

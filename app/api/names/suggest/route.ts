@@ -1,6 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { db, schema } from "@/db/client";
-import { readUserSlug, unauthorized } from "@/lib/api";
+import { readMember, unauthorized } from "@/lib/api";
 import { enrichAndPersist } from "@/lib/enrich-persist";
 import { enforceAiLimit } from "@/lib/rate-limit";
 import { and, desc, eq } from "drizzle-orm";
@@ -19,15 +19,15 @@ function normalise(name: string): string {
 }
 
 export async function POST(req: Request) {
-  const slug = await readUserSlug();
-  if (!slug) return unauthorized();
+  const member = await readMember();
+  if (!member) return unauthorized();
 
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
     return Response.json({ error: "AI is not configured" }, { status: 503 });
   }
 
-  const limit = await enforceAiLimit(slug, "suggest");
+  const limit = await enforceAiLimit(member.id, "suggest");
   if (!limit.ok) {
     return Response.json(
       { error: `Daily suggest limit reached (${limit.limit}/day). Try again tomorrow.` },
@@ -52,7 +52,7 @@ export async function POST(req: Request) {
     .select({ name: schema.names.name })
     .from(schema.swipes)
     .innerJoin(schema.names, eq(schema.names.id, schema.swipes.nameId))
-    .where(and(eq(schema.swipes.userSlug, slug), eq(schema.swipes.decision, "like")))
+    .where(and(eq(schema.swipes.memberId, member.id), eq(schema.swipes.decision, "like")))
     .orderBy(desc(schema.swipes.createdAt))
     .limit(40);
 

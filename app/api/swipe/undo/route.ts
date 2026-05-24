@@ -1,13 +1,13 @@
 import { db, schema } from "@/db/client";
-import { readUserSlug, unauthorized } from "@/lib/api";
-import { partnerOf } from "@/lib/user";
+import { readMember, unauthorized } from "@/lib/api";
+import { getCoupleMembers, otherMember } from "@/lib/members";
 import { and, desc, eq } from "drizzle-orm";
 
 export const dynamic = "force-dynamic";
 
 export async function POST() {
-  const slug = await readUserSlug();
-  if (!slug) return unauthorized();
+  const member = await readMember();
+  if (!member) return unauthorized();
 
   const [last] = await db
     .select({
@@ -16,7 +16,7 @@ export async function POST() {
       decision: schema.swipes.decision,
     })
     .from(schema.swipes)
-    .where(eq(schema.swipes.userSlug, slug))
+    .where(eq(schema.swipes.memberId, member.id))
     .orderBy(desc(schema.swipes.createdAt))
     .limit(1);
 
@@ -26,19 +26,22 @@ export async function POST() {
 
   let wasMatch = false;
   if (last.decision === "like") {
-    const partner = partnerOf(slug);
-    const partnerLike = await db
-      .select({ id: schema.swipes.id })
-      .from(schema.swipes)
-      .where(
-        and(
-          eq(schema.swipes.userSlug, partner),
-          eq(schema.swipes.nameId, last.nameId),
-          eq(schema.swipes.decision, "like")
+    const members = await getCoupleMembers(member.coupleId);
+    const partner = otherMember(members, member.id);
+    if (partner) {
+      const partnerLike = await db
+        .select({ id: schema.swipes.id })
+        .from(schema.swipes)
+        .where(
+          and(
+            eq(schema.swipes.memberId, partner.id),
+            eq(schema.swipes.nameId, last.nameId),
+            eq(schema.swipes.decision, "like")
+          )
         )
-      )
-      .limit(1);
-    wasMatch = partnerLike.length > 0;
+        .limit(1);
+      wasMatch = partnerLike.length > 0;
+    }
   }
 
   const [name] = await db

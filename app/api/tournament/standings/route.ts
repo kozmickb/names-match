@@ -1,12 +1,12 @@
-import { readUserSlug, unauthorized } from "@/lib/api";
+import { readMember, unauthorized } from "@/lib/api";
 import { computeStandings } from "@/lib/standings";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const slug = await readUserSlug();
-  if (!slug) return unauthorized();
+  const member = await readMember();
+  if (!member) return unauthorized();
 
-  const { boys, girls } = await computeStandings();
+  const { boys, girls } = await computeStandings(member.coupleId);
   return Response.json({ boys, girls });
 }

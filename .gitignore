@@ -49,6 +49,9 @@ next-env.d.ts
 
 .vercel
 
+# tenancy migration logical backups (contain user data)
+backup-pre-tenancy-*.json
+
 # Kanban runtime artifacts (managed by .claude/kanban/)
 .claude/kanban/touched.log
 .claude/kanban/_seed-*

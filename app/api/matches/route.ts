@@ -1,13 +1,21 @@
 import { db } from "@/db/client";
-import { readUserSlug, unauthorized } from "@/lib/api";
+import { readMember, unauthorized } from "@/lib/api";
+import { getCoupleMembers } from "@/lib/members";
 import { sql } from "drizzle-orm";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const slug = await readUserSlug();
-  if (!slug) return unauthorized();
+  const member = await readMember();
+  if (!member) return unauthorized();
+  const members = await getCoupleMembers(member.coupleId);
+  const a = members[0];
+  const b = members[1];
+  if (!a || !b) return Response.json({ matches: [] });
 
+  // sa = member a's swipe, sb = member b's swipe. "my"/"partner" is resolved
+  // relative to the requesting member.
+  const meIsA = member.id === a.id;
   const rows = (await db.execute<{
     id: number;
     name: string;
@@ -20,16 +28,16 @@ export async function GET() {
     select
       n.id,
       n.name,
-      greatest(sk.created_at, sl.created_at) as matched_at,
-      case when ${slug} = 'karo' then sk.favourite else sl.favourite end as my_favourite,
-      case when ${slug} = 'karo' then sl.favourite else sk.favourite end as partner_favourite,
-      case when ${slug} = 'karo' then sk.note else sl.note end as my_note,
-      case when ${slug} = 'karo' then sl.note else sk.note end as partner_note
+      greatest(sa.created_at, sb.created_at) as matched_at,
+      case when ${meIsA} then sa.favourite else sb.favourite end as my_favourite,
+      case when ${meIsA} then sb.favourite else sa.favourite end as partner_favourite,
+      case when ${meIsA} then sa.note else sb.note end as my_note,
+      case when ${meIsA} then sb.note else sa.note end as partner_note
     from names n
-    join swipes sk on sk.name_id = n.id and sk.user_slug = 'karo' and sk.decision = 'like'
-    join swipes sl on sl.name_id = n.id and sl.user_slug = 'lucy' and sl.decision = 'like'
+    join swipes sa on sa.name_id = n.id and sa.member_id = ${a.id} and sa.decision = 'like'
+    join swipes sb on sb.name_id = n.id and sb.member_id = ${b.id} and sb.decision = 'like'
     order by
-      (case when ${slug} = 'karo' then sk.favourite else sl.favourite end) desc,
+      (case when ${meIsA} then sa.favourite else sb.favourite end) desc,
       matched_at desc
   `)) as unknown as Array<{
     id: number;

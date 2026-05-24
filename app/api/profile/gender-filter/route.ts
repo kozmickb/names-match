@@ -1,5 +1,5 @@
 import { db, schema } from "@/db/client";
-import { readUserSlug, unauthorized } from "@/lib/api";
+import { readMember, unauthorized } from "@/lib/api";
 import { eq, sql } from "drizzle-orm";
 
 export const dynamic = "force-dynamic";
@@ -7,21 +7,21 @@ export const dynamic = "force-dynamic";
 const VALID = new Set(["all", "masculine", "feminine", "unisex"]);
 
 export async function GET() {
-  const slug = await readUserSlug();
-  if (!slug) return unauthorized();
+  const member = await readMember();
+  if (!member) return unauthorized();
 
   const [row] = await db
     .select({ filter: schema.userProfiles.genderFilter })
     .from(schema.userProfiles)
-    .where(eq(schema.userProfiles.userSlug, slug))
+    .where(eq(schema.userProfiles.memberId, member.id))
     .limit(1);
 
   return Response.json({ genderFilter: row?.filter ?? "all" });
 }
 
 export async function POST(req: Request) {
-  const slug = await readUserSlug();
-  if (!slug) return unauthorized();
+  const member = await readMember();
+  if (!member) return unauthorized();
 
   let body: { filter?: unknown };
   try {
@@ -36,9 +36,9 @@ export async function POST(req: Request) {
 
   await db
     .insert(schema.userProfiles)
-    .values({ userSlug: slug, genderFilter: body.filter })
+    .values({ userSlug: member.legacySlug as "karo" | "lucy", memberId: member.id, genderFilter: body.filter })
     .onConflictDoUpdate({
-      target: schema.userProfiles.userSlug,
+      target: schema.userProfiles.memberId,
       set: { genderFilter: body.filter, updatedAt: sql`now()` },
     });
 

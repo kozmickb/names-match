@@ -1,24 +1,24 @@
 import { db, schema } from "@/db/client";
-import { readUserSlug, unauthorized } from "@/lib/api";
+import { readMember, unauthorized } from "@/lib/api";
 import { ORIGIN_GROUP_KEYS } from "@/lib/origin-groups";
 import { eq, sql } from "drizzle-orm";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
-  const slug = await readUserSlug();
-  if (!slug) return unauthorized();
+  const member = await readMember();
+  if (!member) return unauthorized();
 
   const url = new URL(request.url);
   const limit = Math.min(Math.max(Number(url.searchParams.get("limit") ?? 30), 1), 100);
 
   const [state] = await db
     .select({
-      seed: schema.appState.shuffleSeed,
-      excludedOriginGroups: schema.appState.excludedOriginGroups,
+      seed: schema.coupleState.shuffleSeed,
+      excludedOriginGroups: schema.coupleState.excludedOriginGroups,
     })
-    .from(schema.appState)
-    .where(eq(schema.appState.id, 1))
+    .from(schema.coupleState)
+    .where(eq(schema.coupleState.coupleId, member.coupleId))
     .limit(1);
   const seed = Number(state?.seed ?? 0);
   const shuffled = seed !== 0;
@@ -35,7 +35,7 @@ export async function GET(request: Request) {
       genderFilter: schema.userProfiles.genderFilter,
     })
     .from(schema.userProfiles)
-    .where(eq(schema.userProfiles.userSlug, slug))
+    .where(eq(schema.userProfiles.memberId, member.id))
     .limit(1);
   const autoPass = !!profile?.autoPass;
   const filter = profile?.genderFilter ?? "all";
@@ -48,7 +48,7 @@ export async function GET(request: Request) {
     ? sql`and not exists (
         select 1 from swipes sv
         join names nv on nv.id = sv.name_id
-        where sv.user_slug = ${slug}
+        where sv.member_id = ${member.id}
           and abs(length(nv.name) - length(n.name)) <= 1
           and levenshtein(lower(nv.name), lower(n.name)) <= 1
       )`
@@ -68,7 +68,7 @@ export async function GET(request: Request) {
     from names n
     where not exists (
       select 1 from swipes s
-      where s.name_id = n.id and s.user_slug = ${slug}
+      where s.name_id = n.id and s.member_id = ${member.id}
     )
     ${variantsFilter}
     ${genderFilter}

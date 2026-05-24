@@ -1,27 +1,28 @@
 import { db, schema } from "@/db/client";
-import { readUserSlug, unauthorized } from "@/lib/api";
+import { readMember, unauthorized } from "@/lib/api";
 import { eq, sql } from "drizzle-orm";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
   const rows = await db
-    .select({ slug: schema.userProfiles.userSlug, emoji: schema.userProfiles.emoji })
-    .from(schema.userProfiles);
+    .select({ legacySlug: schema.members.legacySlug, emoji: schema.userProfiles.emoji })
+    .from(schema.userProfiles)
+    .innerJoin(schema.members, eq(schema.members.id, schema.userProfiles.memberId));
 
   const out: { karo: { emoji: string }; lucy: { emoji: string } } = {
     karo: { emoji: "🧔🏻" },
     lucy: { emoji: "👩🏼" },
   };
   for (const r of rows) {
-    if (r.slug === "karo" || r.slug === "lucy") out[r.slug].emoji = r.emoji;
+    if (r.legacySlug === "karo" || r.legacySlug === "lucy") out[r.legacySlug].emoji = r.emoji;
   }
   return Response.json(out);
 }
 
 export async function POST(req: Request) {
-  const slug = await readUserSlug();
-  if (!slug) return unauthorized();
+  const member = await readMember();
+  if (!member) return unauthorized();
 
   let body: { emoji?: unknown };
   try {
@@ -40,9 +41,9 @@ export async function POST(req: Request) {
 
   await db
     .insert(schema.userProfiles)
-    .values({ userSlug: slug, emoji })
+    .values({ userSlug: member.legacySlug as "karo" | "lucy", memberId: member.id, emoji })
     .onConflictDoUpdate({
-      target: schema.userProfiles.userSlug,
+      target: schema.userProfiles.memberId,
       set: { emoji, updatedAt: sql`now()` },
     });
 

@@ -1,13 +1,13 @@
 import { db, schema } from "@/db/client";
-import { readUserSlug, unauthorized } from "@/lib/api";
+import { readMember, unauthorized } from "@/lib/api";
 import { and, eq } from "drizzle-orm";
 import type { NextRequest } from "next/server";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
-  const slug = await readUserSlug();
-  if (!slug) return unauthorized();
+  const member = await readMember();
+  if (!member) return unauthorized();
 
   const { id } = await ctx.params;
   const nameId = Number(id);
@@ -28,7 +28,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   const result = await db
     .update(schema.swipes)
     .set({ note })
-    .where(and(eq(schema.swipes.userSlug, slug), eq(schema.swipes.nameId, nameId)))
+    .where(and(eq(schema.swipes.memberId, member.id), eq(schema.swipes.nameId, nameId)))
     .returning({ id: schema.swipes.id });
 
   if (result.length === 0) {

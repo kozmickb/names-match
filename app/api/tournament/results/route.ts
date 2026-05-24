@@ -1,5 +1,6 @@
 import { db } from "@/db/client";
-import { readUserSlug, unauthorized } from "@/lib/api";
+import { readMember, unauthorized } from "@/lib/api";
+import { getCoupleMembers } from "@/lib/members";
 import { sql } from "drizzle-orm";
 
 export const dynamic = "force-dynamic";
@@ -14,31 +15,35 @@ type Row = {
 };
 
 export async function GET() {
-  const slug = await readUserSlug();
-  if (!slug) return unauthorized();
+  const member = await readMember();
+  if (!member) return unauthorized();
+  const members = await getCoupleMembers(member.coupleId);
+  const a = members[0];
+  const b = members[1];
+  if (!a || !b) return Response.json({ ranking: [] });
 
   const rows = (await db.execute<Row>(sql`
     with matches as (
       select n.id, n.name
       from names n
-      join swipes sk on sk.name_id = n.id and sk.user_slug = 'karo' and sk.decision = 'like'
-      join swipes sl on sl.name_id = n.id and sl.user_slug = 'lucy' and sl.decision = 'like'
+      join swipes sk on sk.name_id = n.id and sk.member_id = ${a.id} and sk.decision = 'like'
+      join swipes sl on sl.name_id = n.id and sl.member_id = ${b.id} and sl.decision = 'like'
     ),
     karo_wins as (
       select winner_name_id as id, count(*)::int as c
-      from tournament_votes where user_slug = 'karo' group by 1
+      from tournament_votes where member_id = ${a.id} group by 1
     ),
     karo_losses as (
       select loser_name_id as id, count(*)::int as c
-      from tournament_votes where user_slug = 'karo' group by 1
+      from tournament_votes where member_id = ${a.id} group by 1
     ),
     lucy_wins as (
       select winner_name_id as id, count(*)::int as c
-      from tournament_votes where user_slug = 'lucy' group by 1
+      from tournament_votes where member_id = ${b.id} group by 1
     ),
     lucy_losses as (
       select loser_name_id as id, count(*)::int as c
-      from tournament_votes where user_slug = 'lucy' group by 1
+      from tournament_votes where member_id = ${b.id} group by 1
     )
     select
       m.id, m.name,
