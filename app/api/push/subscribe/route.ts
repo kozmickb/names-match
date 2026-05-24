@@ -1,5 +1,5 @@
 import { db, schema } from "@/db/client";
-import { readUserSlug, unauthorized } from "@/lib/api";
+import { readMember, unauthorized } from "@/lib/api";
 import { eq, sql } from "drizzle-orm";
 
 export const dynamic = "force-dynamic";
@@ -10,8 +10,8 @@ type Body = {
 };
 
 export async function POST(req: Request) {
-  const slug = await readUserSlug();
-  if (!slug) return unauthorized();
+  const member = await readMember();
+  if (!member) return unauthorized();
 
   let body: Body;
   try {
@@ -29,18 +29,18 @@ export async function POST(req: Request) {
 
   await db
     .insert(schema.pushSubscriptions)
-    .values({ userSlug: slug, endpoint, p256dh, auth })
+    .values({ memberId: member.id, endpoint, p256dh, auth })
     .onConflictDoUpdate({
       target: schema.pushSubscriptions.endpoint,
-      set: { userSlug: slug, p256dh, auth, createdAt: sql`now()` },
+      set: { memberId: member.id, p256dh, auth, createdAt: sql`now()` },
     });
 
   return Response.json({ ok: true });
 }
 
 export async function DELETE(req: Request) {
-  const slug = await readUserSlug();
-  if (!slug) return unauthorized();
+  const member = await readMember();
+  if (!member) return unauthorized();
 
   let endpoint: string | null = null;
   try {
@@ -55,7 +55,7 @@ export async function DELETE(req: Request) {
   } else {
     await db
       .delete(schema.pushSubscriptions)
-      .where(eq(schema.pushSubscriptions.userSlug, slug));
+      .where(eq(schema.pushSubscriptions.memberId, member.id));
   }
 
   return Response.json({ ok: true });

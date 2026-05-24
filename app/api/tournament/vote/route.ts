@@ -1,5 +1,5 @@
 import { db, schema } from "@/db/client";
-import { readUserSlug, unauthorized } from "@/lib/api";
+import { readMember, unauthorized } from "@/lib/api";
 import { and, eq, or, sql } from "drizzle-orm";
 
 export const dynamic = "force-dynamic";
@@ -14,8 +14,8 @@ function sameGenderAllowed(a: string | null, b: string | null): boolean {
 }
 
 export async function POST(req: Request) {
-  const slug = await readUserSlug();
-  if (!slug) return unauthorized();
+  const member = await readMember();
+  if (!member) return unauthorized();
 
   let body: { winnerId?: unknown; loserId?: unknown };
   try {
@@ -52,7 +52,7 @@ export async function POST(req: Request) {
   await db.transaction(async (tx) => {
     await tx.delete(schema.tournamentVotes).where(
       and(
-        eq(schema.tournamentVotes.userSlug, slug),
+        eq(schema.tournamentVotes.memberId, member.id),
         or(
           and(
             eq(schema.tournamentVotes.winnerNameId, winnerId),
@@ -67,7 +67,7 @@ export async function POST(req: Request) {
     );
     await tx
       .insert(schema.tournamentVotes)
-      .values({ userSlug: slug, winnerNameId: winnerId, loserNameId: loserId });
+      .values({ memberId: member.id, winnerNameId: winnerId, loserNameId: loserId });
   });
 
   return Response.json({ ok: true });

@@ -1,5 +1,5 @@
 import { db, schema } from "@/db/client";
-import { readUserSlug, unauthorized } from "@/lib/api";
+import { readMember, unauthorized } from "@/lib/api";
 import { buildBracket } from "@/lib/knockout";
 import { roundsCount } from "@/lib/bracket";
 import { and, eq } from "drizzle-orm";
@@ -9,8 +9,8 @@ export const dynamic = "force-dynamic";
 // Decide a knockout tie together (one shared pick), advance the winner into the
 // next round, and crown the champion when the final is decided.
 export async function POST(req: Request) {
-  const slug = await readUserSlug();
-  if (!slug) return unauthorized();
+  const member = await readMember();
+  if (!member) return unauthorized();
 
   let body: { matchId?: unknown; winnerId?: unknown };
   try {
@@ -43,6 +43,7 @@ export async function POST(req: Request) {
     .where(eq(schema.knockouts.id, m.knockoutId))
     .limit(1);
   if (!ko) return Response.json({ error: "knockout not found" }, { status: 404 });
+  if (ko.coupleId !== member.coupleId) return unauthorized();
 
   const totalRounds = roundsCount(ko.size);
 
@@ -75,6 +76,6 @@ export async function POST(req: Request) {
     }
   });
 
-  const bracket = await buildBracket(ko.gender);
+  const bracket = await buildBracket(member.coupleId, ko.gender);
   return Response.json({ bracket });
 }

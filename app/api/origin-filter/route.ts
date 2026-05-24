@@ -1,22 +1,22 @@
 import { db, schema } from "@/db/client";
-import { readUserSlug, unauthorized } from "@/lib/api";
+import { readMember, unauthorized } from "@/lib/api";
 import { ORIGIN_GROUPS, ORIGIN_GROUP_KEYS } from "@/lib/origin-groups";
 import { eq, sql } from "drizzle-orm";
 
 export const dynamic = "force-dynamic";
 
-async function readExcluded(): Promise<string[]> {
+async function readExcluded(coupleId: string): Promise<string[]> {
   const [state] = await db
-    .select({ excluded: schema.appState.excludedOriginGroups })
-    .from(schema.appState)
-    .where(eq(schema.appState.id, 1))
+    .select({ excluded: schema.coupleState.excludedOriginGroups })
+    .from(schema.coupleState)
+    .where(eq(schema.coupleState.coupleId, coupleId))
     .limit(1);
   return (state?.excluded ?? []).filter((g) => ORIGIN_GROUP_KEYS.has(g));
 }
 
 export async function GET() {
-  const slug = await readUserSlug();
-  if (!slug) return unauthorized();
+  const member = await readMember();
+  if (!member) return unauthorized();
 
   const counts = (await db.execute<{ origin_group: string | null; c: number }>(sql`
     select origin_group, count(*)::int as c from names group by origin_group
@@ -24,7 +24,7 @@ export async function GET() {
   const countByKey = new Map<string, number>();
   for (const r of counts) countByKey.set(r.origin_group ?? "other", Number(r.c));
 
-  const excluded = await readExcluded();
+  const excluded = await readExcluded(member.coupleId);
   const groups = ORIGIN_GROUPS.map((g) => ({
     key: g.key,
     label: g.label,
@@ -36,8 +36,8 @@ export async function GET() {
 }
 
 export async function PUT(req: Request) {
-  const slug = await readUserSlug();
-  if (!slug) return unauthorized();
+  const member = await readMember();
+  if (!member) return unauthorized();
 
   let body: { excluded?: unknown };
   try {
@@ -57,10 +57,10 @@ export async function PUT(req: Request) {
   }
 
   await db
-    .insert(schema.appState)
-    .values({ id: 1, excludedOriginGroups: excluded })
+    .insert(schema.coupleState)
+    .values({ coupleId: member.coupleId, excludedOriginGroups: excluded })
     .onConflictDoUpdate({
-      target: schema.appState.id,
+      target: schema.coupleState.coupleId,
       set: { excludedOriginGroups: excluded },
     });
 

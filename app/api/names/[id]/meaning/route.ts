@@ -1,6 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { db, schema } from "@/db/client";
-import { readUserSlug, unauthorized } from "@/lib/api";
+import { readMember, unauthorized } from "@/lib/api";
 import { eq, sql } from "drizzle-orm";
 import type { NextRequest } from "next/server";
 
@@ -8,8 +8,8 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 20;
 
 export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
-  const slug = await readUserSlug();
-  if (!slug) return unauthorized();
+  const member = await readMember();
+  if (!member) return unauthorized();
 
   const { id } = await ctx.params;
   const nameId = Number(id);

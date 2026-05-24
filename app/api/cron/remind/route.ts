@@ -1,7 +1,7 @@
 import { db, schema } from "@/db/client";
 import { sendPushTo } from "@/lib/push";
-import { displayName, type UserSlug } from "@/lib/user";
-import { and, desc, eq, sql } from "drizzle-orm";
+import { getCoupleMembers } from "@/lib/members";
+import { desc, eq, sql } from "drizzle-orm";
 import { headers } from "next/headers";
 
 export const dynamic = "force-dynamic";
@@ -23,13 +23,21 @@ export async function GET() {
     .select({ totalNames: sql<number>`count(*)::int` })
     .from(schema.names);
 
-  const results: Array<{ user: UserSlug; sent: number; skipped: boolean; reason?: string }> = [];
+  const allMembers = await db
+    .select({
+      id: schema.members.id,
+      coupleId: schema.members.coupleId,
+      displayName: schema.members.displayName,
+    })
+    .from(schema.members);
 
-  for (const user of ["karo", "lucy"] as const) {
+  const results: Array<{ memberId: string; sent: number; skipped: boolean; reason?: string }> = [];
+
+  for (const m of allMembers) {
     const [last] = await db
       .select({ createdAt: schema.swipes.createdAt })
       .from(schema.swipes)
-      .where(eq(schema.swipes.userSlug, user))
+      .where(eq(schema.swipes.memberId, m.id))
       .orderBy(desc(schema.swipes.createdAt))
       .limit(1);
 
@@ -37,29 +45,31 @@ export async function GET() {
     const hoursSince = lastTime ? (Date.now() - lastTime) / 1000 / 3600 : Infinity;
 
     if (hoursSince < STALE_HOURS) {
-      results.push({ user, sent: 0, skipped: true, reason: "recent_activity" });
+      results.push({ memberId: m.id, sent: 0, skipped: true, reason: "recent_activity" });
       continue;
     }
 
     const [{ swiped }] = await db
       .select({ swiped: sql<number>`count(*)::int` })
       .from(schema.swipes)
-      .where(eq(schema.swipes.userSlug, user));
+      .where(eq(schema.swipes.memberId, m.id));
 
     const remaining = totalNames - swiped;
     if (remaining <= 0) {
-      results.push({ user, sent: 0, skipped: true, reason: "all_swiped" });
+      results.push({ memberId: m.id, sent: 0, skipped: true, reason: "all_swiped" });
       continue;
     }
 
-    const partnerName = displayName(user === "karo" ? "lucy" : "karo");
-    const { sent } = await sendPushTo(user, {
+    const members = await getCoupleMembers(m.coupleId);
+    const partner = members.find((x) => x.id !== m.id);
+    const partnerName = partner?.displayName ?? "Your partner";
+    const { sent } = await sendPushTo(m.id, {
       title: "Your deck is waiting",
       body: `${remaining.toLocaleString()} names left to swipe. ${partnerName} might have already moved.`,
       url: "/swipe",
       tag: "remind",
     });
-    results.push({ user, sent, skipped: false });
+    results.push({ memberId: m.id, sent, skipped: false });
   }
 
   return Response.json({ ok: true, results });

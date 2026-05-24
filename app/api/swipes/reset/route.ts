@@ -1,13 +1,13 @@
 import { db, schema } from "@/db/client";
-import { readUserSlug, unauthorized } from "@/lib/api";
+import { readMember, unauthorized } from "@/lib/api";
 import { eq } from "drizzle-orm";
 
 export const dynamic = "force-dynamic";
 
 export async function POST() {
-  const slug = await readUserSlug();
-  if (!slug) return unauthorized();
+  const member = await readMember();
+  if (!member) return unauthorized();
 
-  await db.delete(schema.swipes).where(eq(schema.swipes.userSlug, slug));
+  await db.delete(schema.swipes).where(eq(schema.swipes.memberId, member.id));
   return Response.json({ ok: true });
 }

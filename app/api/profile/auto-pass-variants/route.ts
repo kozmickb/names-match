@@ -1,12 +1,12 @@
 import { db, schema } from "@/db/client";
-import { readUserSlug, unauthorized } from "@/lib/api";
+import { readMember, unauthorized } from "@/lib/api";
 import { eq, sql } from "drizzle-orm";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(req: Request) {
-  const slug = await readUserSlug();
-  if (!slug) return unauthorized();
+  const member = await readMember();
+  if (!member) return unauthorized();
 
   let body: { enabled?: unknown };
   try {
@@ -20,9 +20,9 @@ export async function POST(req: Request) {
 
   await db
     .insert(schema.userProfiles)
-    .values({ userSlug: slug, autoPassVariants: body.enabled })
+    .values({ userSlug: member.legacySlug as "karo" | "lucy", memberId: member.id, autoPassVariants: body.enabled })
     .onConflictDoUpdate({
-      target: schema.userProfiles.userSlug,
+      target: schema.userProfiles.memberId,
       set: { autoPassVariants: body.enabled, updatedAt: sql`now()` },
     });
 
@@ -30,13 +30,13 @@ export async function POST(req: Request) {
 }
 
 export async function GET() {
-  const slug = await readUserSlug();
-  if (!slug) return unauthorized();
+  const member = await readMember();
+  if (!member) return unauthorized();
 
   const [row] = await db
     .select({ enabled: schema.userProfiles.autoPassVariants })
     .from(schema.userProfiles)
-    .where(eq(schema.userProfiles.userSlug, slug))
+    .where(eq(schema.userProfiles.memberId, member.id))
     .limit(1);
 
   return Response.json({ autoPassVariants: !!row?.enabled });

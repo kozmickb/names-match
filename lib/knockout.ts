@@ -43,13 +43,13 @@ type MatchSqlRow = {
   w_name: string | null;
 };
 
-export async function fetchKnockout(gender: string): Promise<KnockoutMeta | null> {
+export async function fetchKnockout(coupleId: string, gender: string): Promise<KnockoutMeta | null> {
   const rows = (await db.execute<KoSqlRow>(sql`
     select k.id, k.gender, k.size, k.status,
            k.champion_name_id as champion_id, nc.name as champion_name
     from knockouts k
     left join names nc on nc.id = k.champion_name_id
-    where k.gender = ${gender}
+    where k.couple_id = ${coupleId} and k.gender = ${gender}
     limit 1
   `)) as unknown as Array<KoSqlRow>;
   if (!rows.length) return null;
@@ -63,8 +63,8 @@ export async function fetchKnockout(gender: string): Promise<KnockoutMeta | null
   };
 }
 
-export async function buildBracket(gender: string): Promise<Bracket | null> {
-  const knockout = await fetchKnockout(gender);
+export async function buildBracket(coupleId: string, gender: string): Promise<Bracket | null> {
+  const knockout = await fetchKnockout(coupleId, gender);
   if (!knockout) return null;
 
   const ms = (await db.execute<MatchSqlRow>(sql`

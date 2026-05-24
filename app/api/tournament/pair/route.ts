@@ -1,5 +1,6 @@
 import { db } from "@/db/client";
-import { readUserSlug, unauthorized } from "@/lib/api";
+import { readMember, unauthorized } from "@/lib/api";
+import { getCoupleMembers } from "@/lib/members";
 import { sql } from "drizzle-orm";
 
 export const dynamic = "force-dynamic";
@@ -17,8 +18,14 @@ function sameGenderAllowed(a: string | null, b: string | null): boolean {
 }
 
 export async function GET(req: Request) {
-  const slug = await readUserSlug();
-  if (!slug) return unauthorized();
+  const member = await readMember();
+  if (!member) return unauthorized();
+  const members = await getCoupleMembers(member.coupleId);
+  const memberA = members[0];
+  const memberB = members[1];
+  if (!memberA || !memberB) {
+    return Response.json({ pair: null, reason: "not_enough_matches", totalMatches: 0 });
+  }
 
   // Scope fixtures to one league so "Play next match" / progress match the
   // table the couple is viewing. boys = not clearly feminine; girls = not
@@ -34,8 +41,8 @@ export async function GET(req: Request) {
   const matches = (await db.execute<MatchRow>(sql`
     select n.id, n.name, n.gender
     from names n
-    join swipes sk on sk.name_id = n.id and sk.user_slug = 'karo' and sk.decision = 'like'
-    join swipes sl on sl.name_id = n.id and sl.user_slug = 'lucy' and sl.decision = 'like'
+    join swipes sk on sk.name_id = n.id and sk.member_id = ${memberA.id} and sk.decision = 'like'
+    join swipes sl on sl.name_id = n.id and sl.member_id = ${memberB.id} and sl.decision = 'like'
     where true ${genderFilter}
   `)) as unknown as Array<MatchRow>;
 
@@ -47,7 +54,7 @@ export async function GET(req: Request) {
   const compared = (await db.execute<CompareRow>(sql`
     select least(winner_name_id, loser_name_id) as a, greatest(winner_name_id, loser_name_id) as b
     from tournament_votes
-    where user_slug = ${slug}
+    where member_id = ${member.id}
   `)) as unknown as Array<CompareRow>;
   const seenKey = new Set(compared.map((r) => `${r.a}|${r.b}`));
 

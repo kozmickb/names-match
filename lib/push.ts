@@ -1,7 +1,6 @@
 import webpush from "web-push";
 import { db, schema } from "@/db/client";
 import { eq } from "drizzle-orm";
-import type { UserSlug } from "@/lib/user";
 
 let configured = false;
 function ensureConfigured() {
@@ -22,7 +21,7 @@ export type PushPayload = {
   tag?: string;
 };
 
-export async function sendPushTo(user: UserSlug, payload: PushPayload): Promise<{ sent: number; gone: number }> {
+export async function sendPushTo(memberId: string, payload: PushPayload): Promise<{ sent: number; gone: number }> {
   if (!ensureConfigured()) return { sent: 0, gone: 0 };
 
   const subs = await db
@@ -33,7 +32,7 @@ export async function sendPushTo(user: UserSlug, payload: PushPayload): Promise<
       auth: schema.pushSubscriptions.auth,
     })
     .from(schema.pushSubscriptions)
-    .where(eq(schema.pushSubscriptions.userSlug, user));
+    .where(eq(schema.pushSubscriptions.memberId, memberId));
 
   let sent = 0;
   let gone = 0;

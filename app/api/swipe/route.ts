@@ -1,14 +1,14 @@
 import { db, schema } from "@/db/client";
-import { readUserSlug, unauthorized } from "@/lib/api";
-import { displayName, partnerOf } from "@/lib/user";
+import { readMember, unauthorized } from "@/lib/api";
+import { getCoupleMembers, otherMember } from "@/lib/members";
 import { sendPushTo } from "@/lib/push";
 import { and, eq } from "drizzle-orm";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
-  const slug = await readUserSlug();
-  if (!slug) return unauthorized();
+  const member = await readMember();
+  if (!member) return unauthorized();
 
   let body: { nameId?: unknown; decision?: unknown };
   try {
@@ -28,20 +28,23 @@ export async function POST(request: Request) {
 
   await db
     .insert(schema.swipes)
-    .values({ userSlug: slug, nameId, decision })
-    .onConflictDoNothing({ target: [schema.swipes.userSlug, schema.swipes.nameId] });
+    .values({ memberId: member.id, nameId, decision })
+    .onConflictDoNothing({ target: [schema.swipes.memberId, schema.swipes.nameId] });
 
   if (decision !== "like") {
     return Response.json({ isMatch: false });
   }
 
-  const partner = partnerOf(slug);
+  const members = await getCoupleMembers(member.coupleId);
+  const partner = otherMember(members, member.id);
+  if (!partner) return Response.json({ isMatch: false });
+
   const partnerLike = await db
     .select({ id: schema.swipes.id })
     .from(schema.swipes)
     .where(
       and(
-        eq(schema.swipes.userSlug, partner),
+        eq(schema.swipes.memberId, partner.id),
         eq(schema.swipes.nameId, nameId),
         eq(schema.swipes.decision, "like")
       )
@@ -60,9 +63,9 @@ export async function POST(request: Request) {
 
   const matchedName = nameRow ?? { id: nameId, name: "" };
 
-  void sendPushTo(partner, {
+  void sendPushTo(partner.id, {
     title: "It's a match!",
-    body: `${displayName(slug)} also liked ${matchedName.name}.`,
+    body: `${member.displayName} also liked ${matchedName.name}.`,
     url: "/matches",
     tag: `match-${matchedName.id}`,
   }).catch(() => {});

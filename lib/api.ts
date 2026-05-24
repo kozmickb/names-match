@@ -1,8 +1,14 @@
 import { headers, cookies } from "next/headers";
-import { isUserSlug, type UserSlug } from "./user";
+import { isUserSlug } from "./user";
 import { AUTH_COOKIE_NAME, isAuthRequired, verifyToken } from "./auth";
+import { memberByLegacySlug, type Member } from "./members";
 
-export async function readUserSlug(): Promise<UserSlug | null> {
+/**
+ * Resolve the requesting member. Phase A bridge: the client still sends
+ * `x-user-slug: karo|lucy`; we map it to the seed couple's member via legacy_slug.
+ * Phase B replaces this with a signed session cookie carrying member_id.
+ */
+export async function readMember(): Promise<Member | null> {
   if (isAuthRequired()) {
     const jar = await cookies();
     const token = jar.get(AUTH_COOKIE_NAME)?.value;
@@ -10,7 +16,8 @@ export async function readUserSlug(): Promise<UserSlug | null> {
   }
   const h = await headers();
   const slug = h.get("x-user-slug");
-  return isUserSlug(slug) ? slug : null;
+  if (!isUserSlug(slug)) return null;
+  return memberByLegacySlug(slug);
 }
 
 export function unauthorized(): Response {

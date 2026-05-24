@@ -1,9 +1,9 @@
 import { db, schema } from "@/db/client";
-import { readUserSlug, unauthorized } from "@/lib/api";
+import { readMember, unauthorized } from "@/lib/api";
 import { computeStandings } from "@/lib/standings";
 import { bracketSize, seedOrder, roundsCount } from "@/lib/bracket";
 import { buildBracket } from "@/lib/knockout";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 
 export const dynamic = "force-dynamic";
 
@@ -12,19 +12,19 @@ function parseGender(v: unknown): "boys" | "girls" | null {
 }
 
 export async function GET(req: Request) {
-  const slug = await readUserSlug();
-  if (!slug) return unauthorized();
+  const member = await readMember();
+  if (!member) return unauthorized();
   const gender = parseGender(new URL(req.url).searchParams.get("gender"));
   if (!gender) return Response.json({ error: "gender required" }, { status: 400 });
-  const bracket = await buildBracket(gender);
+  const bracket = await buildBracket(member.coupleId, gender);
   return Response.json({ bracket });
 }
 
 // Start (or restart) the knockout for a league, seeding the top names from the
 // current standings into a fresh bracket.
 export async function POST(req: Request) {
-  const slug = await readUserSlug();
-  if (!slug) return unauthorized();
+  const member = await readMember();
+  if (!member) return unauthorized();
 
   let body: { gender?: unknown };
   try {
@@ -35,7 +35,7 @@ export async function POST(req: Request) {
   const gender = parseGender(body.gender);
   if (!gender) return Response.json({ error: "gender required" }, { status: 400 });
 
-  const standings = await computeStandings();
+  const standings = await computeStandings(member.coupleId);
   const rows = standings[gender];
   const size = bracketSize(rows.length);
   if (size < 2) {
@@ -47,10 +47,12 @@ export async function POST(req: Request) {
   const totalRounds = roundsCount(size);
 
   const ko = await db.transaction(async (tx) => {
-    await tx.delete(schema.knockouts).where(eq(schema.knockouts.gender, gender));
+    await tx
+      .delete(schema.knockouts)
+      .where(and(eq(schema.knockouts.coupleId, member.coupleId), eq(schema.knockouts.gender, gender)));
     const [created] = await tx
       .insert(schema.knockouts)
-      .values({ gender, size, status: "active" })
+      .values({ coupleId: member.coupleId, gender, size, status: "active" })
       .returning({ id: schema.knockouts.id });
 
     const matches: Array<{
@@ -82,6 +84,6 @@ export async function POST(req: Request) {
     return created;
   });
 
-  const bracket = await buildBracket(gender);
+  const bracket = await buildBracket(member.coupleId, gender);
   return Response.json({ bracket, knockoutId: ko.id });
 }

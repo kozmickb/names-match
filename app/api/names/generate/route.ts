@@ -1,6 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { db, schema } from "@/db/client";
-import { readUserSlug, unauthorized } from "@/lib/api";
+import { readMember, unauthorized } from "@/lib/api";
 import { enrichAndPersist } from "@/lib/enrich-persist";
 import { enforceAiLimit } from "@/lib/rate-limit";
 
@@ -18,8 +18,8 @@ function normalise(name: string): string {
 }
 
 export async function POST(req: Request) {
-  const slug = await readUserSlug();
-  if (!slug) return unauthorized();
+  const member = await readMember();
+  if (!member) return unauthorized();
 
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
@@ -29,7 +29,7 @@ export async function POST(req: Request) {
     );
   }
 
-  const limit = await enforceAiLimit(slug, "generate");
+  const limit = await enforceAiLimit(member.id, "generate");
   if (!limit.ok) {
     return Response.json(
       { error: `Daily generate limit reached (${limit.limit}/day). Try again tomorrow.` },
