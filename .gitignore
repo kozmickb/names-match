@@ -48,3 +48,6 @@ graphify-out/
 next-env.d.ts
 
 .vercel
+
+# tenancy migration logical backups (contain user data)
+backup-pre-tenancy-*.json
