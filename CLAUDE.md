@@ -7,6 +7,12 @@ become **matches**; a **tournament** ranks the matches — a **league table (gro
 that leads into a **World Cup–style knockout bracket** — to crown a favourite. The
 collaborative ranking is the product's moat (no competitor ranks matches together).
 
+## Program Board (authoritative state)
+All work on this project is tracked on the **BabyNames Program Board**.
+- **Local truth:** `.claude/kanban/items.json` (each card has a stable `key`, `status`, `local_paths`).
+- **Notion:** https://www.notion.so/34a3c01e9353476d9a974d61009c1bb3
+- Claude manages the board end-to-end: PostToolUse + Stop hooks journal edits and force a sync at turn end; say "sync the kanban" or `/kanban-sync` any time. Columns: Backlog → Spec'd → Building → Held → Live.
+
 ## Stack
 - **Next.js 16** (App Router, Turbopack) + React 19, Tailwind v4, shadcn/base-ui, framer-motion.
 - **Postgres + Drizzle ORM** (`db/schema.ts`, `db/client.ts`). Deployed on **Vercel**;

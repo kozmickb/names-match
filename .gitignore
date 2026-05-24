@@ -51,3 +51,9 @@ next-env.d.ts
 
 # tenancy migration logical backups (contain user data)
 backup-pre-tenancy-*.json
+
+# Kanban runtime artifacts (managed by .claude/kanban/)
+.claude/kanban/touched.log
+.claude/kanban/_seed-*
+.claude/kanban/*.tmp.json
+.claude/kanban/.stop-cookie

@@ -1,0 +1,439 @@
+{
+  "$schema": "./schema.md",
+  "notion": {
+    "database_id": "34a3c01e-9353-476d-9a97-4d61009c1bb3",
+    "data_source_id": "349b8e3b-0869-43e8-a017-890d88417331",
+    "parent_page_id": "36aa1a25-8916-81ff-9cf0-cddaed99f4c2",
+    "url": "https://www.notion.so/34a3c01e9353476d9a974d61009c1bb3"
+  },
+  "items": [
+    {
+      "key": "swipe-match-core",
+      "title": "Swipe / match / undo core loop",
+      "status": "Live",
+      "subproject": "Web",
+      "priority": "P1",
+      "type": [
+        "Feature"
+      ],
+      "runtime": "PWA",
+      "spec_link": null,
+      "plan_link": null,
+      "related_commits": null,
+      "ota_build_ids": null,
+      "blocker": null,
+      "local_paths": [
+        "app/api/swipe/route.ts",
+        "app/api/swipe/undo/route.ts",
+        "app/api/matches/route.ts",
+        "app/api/likes/route.ts"
+      ],
+      "summary": "Two partners swipe names like/pass; mutual likes become matches. Free undo on the last swipe. The product's core loop.",
+      "notion_page_id": "36aa1a25-8916-81ea-a6b7-f4699afbb931"
+    },
+    {
+      "key": "ai-generate-suggest",
+      "title": "AI generate & suggest names",
+      "status": "Live",
+      "subproject": "Backend",
+      "priority": "P2",
+      "type": [
+        "Feature"
+      ],
+      "runtime": "PWA",
+      "spec_link": null,
+      "plan_link": null,
+      "related_commits": null,
+      "ota_build_ids": null,
+      "blocker": null,
+      "local_paths": [
+        "app/api/names/generate/route.ts",
+        "app/api/names/suggest/route.ts"
+      ],
+      "summary": "Anthropic (claude-haiku-4-5) generates and suggests names, batch-enriched at creation, behind a per-user daily rate limit.",
+      "notion_page_id": "36aa1a25-8916-8151-b1b9-e4827035fc14"
+    },
+    {
+      "key": "tournament-league",
+      "title": "Gender-split tournament league tables",
+      "status": "Live",
+      "subproject": "Web",
+      "priority": "P1",
+      "type": [
+        "Feature"
+      ],
+      "runtime": "PWA",
+      "spec_link": null,
+      "plan_link": null,
+      "related_commits": "afa1d18",
+      "ota_build_ids": null,
+      "blocker": null,
+      "local_paths": [
+        "lib/standings.ts",
+        "app/api/tournament/standings/route.ts"
+      ],
+      "summary": "League table (group stage) ranking mutual matches via head-to-head votes, split into boys/girls leagues. The collaborative-ranking moat.",
+      "notion_page_id": "36aa1a25-8916-817e-b951-fa8c53f6b3fe"
+    },
+    {
+      "key": "tournament-hub",
+      "title": "Tournament hub (league → matches)",
+      "status": "Live",
+      "subproject": "Web",
+      "priority": "P2",
+      "type": [
+        "Feature"
+      ],
+      "runtime": "PWA",
+      "spec_link": null,
+      "plan_link": null,
+      "related_commits": "bb6ce3d",
+      "ota_build_ids": null,
+      "blocker": null,
+      "local_paths": [
+        "app/api/tournament/pair/route.ts",
+        "app/api/tournament/results/route.ts",
+        "app/api/tournament/vote/route.ts"
+      ],
+      "summary": "Phase 1: turned the league table into a tournament hub with head-to-head duel pairing and progress tracking.",
+      "notion_page_id": "36aa1a25-8916-8166-ab4d-e0202a4b2cab"
+    },
+    {
+      "key": "knockout-bracket",
+      "title": "World Cup knockout bracket finale",
+      "status": "Live",
+      "subproject": "Web",
+      "priority": "P1",
+      "type": [
+        "Feature"
+      ],
+      "runtime": "PWA",
+      "spec_link": null,
+      "plan_link": null,
+      "related_commits": "d9156c4",
+      "ota_build_ids": null,
+      "blocker": null,
+      "local_paths": [
+        "app/api/tournament/knockout/route.ts",
+        "app/api/tournament/knockout/vote/route.ts",
+        "lib/knockout.ts",
+        "lib/bracket.ts"
+      ],
+      "summary": "Phase 2: top league names seed a single-elimination bracket; ties decided together to crown a favourite.",
+      "notion_page_id": "36aa1a25-8916-810a-8f72-f28ce3dbf67d"
+    },
+    {
+      "key": "origin-filter",
+      "title": "Shared origin-culture filter",
+      "status": "Live",
+      "subproject": "Backend",
+      "priority": "P2",
+      "type": [
+        "Feature"
+      ],
+      "runtime": "PWA",
+      "spec_link": null,
+      "plan_link": null,
+      "related_commits": "8dc6ebf",
+      "ota_build_ids": null,
+      "blocker": null,
+      "local_paths": [
+        "app/api/origin-filter/route.ts",
+        "lib/origin-groups.ts"
+      ],
+      "summary": "Shared house-rules filter excluding origin-culture groups (12 groups) from the swipe deck, stored in app_state.",
+      "notion_page_id": "36aa1a25-8916-8135-9b03-f26557855593"
+    },
+    {
+      "key": "uk-ons-import",
+      "title": "UK ONS import → 17.7k catalog",
+      "status": "Live",
+      "subproject": "Backend",
+      "priority": "P2",
+      "type": [
+        "Feature"
+      ],
+      "runtime": "PWA",
+      "spec_link": null,
+      "plan_link": null,
+      "related_commits": "dcf0e8f",
+      "ota_build_ids": null,
+      "blocker": null,
+      "local_paths": [
+        "db/import-ons.ts",
+        "db/import-names.ts",
+        "db/group-origins.ts"
+      ],
+      "summary": "UK ONS xlsx importer scaled the global catalog to ~17,713 names with origin/meaning/rank enrichment.",
+      "notion_page_id": "36aa1a25-8916-8133-9f5b-d22cecf6fb85"
+    },
+    {
+      "key": "ai-cost-reliability",
+      "title": "AI cost & reliability optimisation",
+      "status": "Live",
+      "subproject": "Backend",
+      "priority": "P2",
+      "type": [
+        "Tech debt"
+      ],
+      "runtime": "PWA",
+      "spec_link": null,
+      "plan_link": null,
+      "related_commits": "c6cefdd",
+      "ota_build_ids": null,
+      "blocker": null,
+      "local_paths": [
+        "lib/rate-limit.ts",
+        "db/enrich.ts"
+      ],
+      "summary": "Per-user daily AI rate limit; enrichment caches only on API success (no negative-cache-on-error blanking).",
+      "notion_page_id": "36aa1a25-8916-812e-bf0f-d46fce92e986"
+    },
+    {
+      "key": "push-notifications",
+      "title": "Web push match notifications",
+      "status": "Live",
+      "subproject": "Backend",
+      "priority": "P2",
+      "type": [
+        "Feature"
+      ],
+      "runtime": "PWA",
+      "spec_link": null,
+      "plan_link": null,
+      "related_commits": null,
+      "ota_build_ids": null,
+      "blocker": null,
+      "local_paths": [
+        "lib/push.ts",
+        "app/api/push/subscribe/route.ts",
+        "app/api/cron/remind/route.ts"
+      ],
+      "summary": "web-push match notifications + a stale-deck reminder cron.",
+      "notion_page_id": "36aa1a25-8916-8129-93d9-de1572098b22"
+    },
+    {
+      "key": "rank-nav-tab",
+      "title": "Rank tab in bottom navigation",
+      "status": "Live",
+      "subproject": "Web",
+      "priority": "P3",
+      "type": [
+        "Feature"
+      ],
+      "runtime": "PWA",
+      "spec_link": null,
+      "plan_link": null,
+      "related_commits": "584bd38",
+      "ota_build_ids": null,
+      "blocker": null,
+      "local_paths": [],
+      "summary": "Added the Rank tab to the bottom navigation to surface the tournament.",
+      "notion_page_id": "36aa1a25-8916-81e6-ace9-e484e8cc12fb"
+    },
+    {
+      "key": "tenancy-phase-a",
+      "title": "Multi-couple tenancy refactor (Phase A)",
+      "status": "Building",
+      "subproject": "Backend",
+      "priority": "P0",
+      "type": [
+        "Feature",
+        "Tech debt"
+      ],
+      "runtime": "PWA",
+      "spec_link": "docs/onboarding-multicouple-plan.md",
+      "plan_link": "docs/superpowers/plans/2026-05-24-multi-couple-tenancy-phase-a.md",
+      "related_commits": "4125b13",
+      "ota_build_ids": null,
+      "blocker": "Paused — awaiting go-ahead before the first prod DB migration (Task 1). Backup + baseline done.",
+      "local_paths": [
+        "db/schema.ts",
+        "db/migrate-tenancy.ts",
+        "db/verify-tenancy.ts",
+        "lib/members.ts",
+        "lib/api.ts",
+        "db/migrations/"
+      ],
+      "summary": "Replace the user_slug enum with couples + members; scope all per-person/per-couple data to a couple; backfill Karo & Lucy as the seed couple with no data loss. Expand → migrate → contract. Prerequisite for native. On branch tenancy-phase-a.",
+      "notion_page_id": "36aa1a25-8916-8164-9962-e91e03336323"
+    },
+    {
+      "key": "tenancy-phase-b-auth",
+      "title": "Phase B — session auth + multi-couple frontend",
+      "status": "Spec'd",
+      "subproject": "Web",
+      "priority": "P1",
+      "type": [
+        "Feature"
+      ],
+      "runtime": "PWA",
+      "spec_link": "docs/onboarding-multicouple-plan.md",
+      "plan_link": null,
+      "related_commits": null,
+      "ota_build_ids": null,
+      "blocker": null,
+      "local_paths": [
+        "components/user-provider.tsx",
+        "app/page.tsx",
+        "components/settings-screen.tsx"
+      ],
+      "summary": "Signed session cookie carrying member_id (replaces x-user-slug + legacy_slug bridge); create/join-couple flows with invite codes; generalise the frontend off hard-coded karo/lucy.",
+      "notion_page_id": "36aa1a25-8916-81c1-80db-c8251d4e5b5f"
+    },
+    {
+      "key": "expo-native-scaffold",
+      "title": "Expo native scaffold (monorepo apps/web + apps/mobile)",
+      "status": "Spec'd",
+      "subproject": "Mobile",
+      "priority": "P1",
+      "type": [
+        "Feature"
+      ],
+      "runtime": "Native v1",
+      "spec_link": "docs/onboarding-multicouple-plan.md",
+      "plan_link": null,
+      "related_commits": null,
+      "ota_build_ids": null,
+      "blocker": "Depends on Phase A (tenancy) + Phase B (auth).",
+      "local_paths": [
+        "apps/mobile/"
+      ],
+      "summary": "React Native / Expo client over the existing Next.js API, in a monorepo (apps/web + apps/mobile) sharing types/API client. Cross-platform parity + bulletproof sync are first-class.",
+      "notion_page_id": "36aa1a25-8916-81f6-a708-c3336adb432d"
+    },
+    {
+      "key": "onboarding-phase-c",
+      "title": "Phase C — onboarding + popularity cut + curated pool",
+      "status": "Spec'd",
+      "subproject": "Web",
+      "priority": "P2",
+      "type": [
+        "Feature"
+      ],
+      "runtime": "PWA",
+      "spec_link": "docs/onboarding-multicouple-plan.md",
+      "plan_link": null,
+      "related_commits": null,
+      "ota_build_ids": null,
+      "blocker": null,
+      "local_paths": [],
+      "summary": "First-run onboarding that shapes the pool (gender focus, origins, popularity/volume cut) with a skip-everything default to a curated starter pool. New filter primitive: popularity cut.",
+      "notion_page_id": "36aa1a25-8916-8163-b933-cd31dda5c6b4"
+    },
+    {
+      "key": "paywall-plans",
+      "title": "Phase D — paywall / plans (per-couple)",
+      "status": "Backlog",
+      "subproject": "Backend",
+      "priority": "P2",
+      "type": [
+        "Feature"
+      ],
+      "runtime": null,
+      "spec_link": "docs/onboarding-multicouple-plan.md",
+      "plan_link": null,
+      "related_commits": null,
+      "ota_build_ids": null,
+      "blocker": null,
+      "local_paths": [],
+      "summary": "Free tier (swipe/match/league, capped AI) + paid unlock (unlimited AI, knockout, advanced filters), billed per couple via a couple-level flag.",
+      "notion_page_id": "36aa1a25-8916-810a-bb36-fba24eb46b56"
+    },
+    {
+      "key": "native-push-apns-fcm",
+      "title": "Native push (APNs / FCM)",
+      "status": "Backlog",
+      "subproject": "Mobile",
+      "priority": "P2",
+      "type": [
+        "Feature"
+      ],
+      "runtime": "Native v1",
+      "spec_link": null,
+      "plan_link": null,
+      "related_commits": null,
+      "ota_build_ids": null,
+      "blocker": "Depends on the Expo scaffold.",
+      "local_paths": [],
+      "summary": "Real native push on both platforms (APNs + FCM) for match notifications, replacing web-push for native clients.",
+      "notion_page_id": "36aa1a25-8916-81ef-89ea-ec52c30ebc82"
+    },
+    {
+      "key": "feat-name-search",
+      "title": "Competitor gap: search names",
+      "status": "Backlog",
+      "subproject": "Web",
+      "priority": "P2",
+      "type": [
+        "Feature"
+      ],
+      "runtime": null,
+      "spec_link": "docs/competitive-findings.md",
+      "plan_link": null,
+      "related_commits": null,
+      "ota_build_ids": null,
+      "blocker": null,
+      "local_paths": [],
+      "summary": "Let users search the catalog for a specific name — a common competitor feature we lack. Add to prod only if it clearly improves the model.",
+      "notion_page_id": "36aa1a25-8916-816c-8400-e9d3966b37e7"
+    },
+    {
+      "key": "feat-add-own-name",
+      "title": "Competitor gap: add-your-own-name",
+      "status": "Backlog",
+      "subproject": "Backend",
+      "priority": "P3",
+      "type": [
+        "Feature"
+      ],
+      "runtime": null,
+      "spec_link": "docs/competitive-findings.md",
+      "plan_link": null,
+      "related_commits": null,
+      "ota_build_ids": null,
+      "blocker": null,
+      "local_paths": [],
+      "summary": "Allow a user to add a name not in the catalog (batched enrich at creation).",
+      "notion_page_id": "36aa1a25-8916-81fb-a782-e18868000cbc"
+    },
+    {
+      "key": "feat-delete-match",
+      "title": "Competitor gap: delete-a-match",
+      "status": "Backlog",
+      "subproject": "Web",
+      "priority": "P3",
+      "type": [
+        "Feature"
+      ],
+      "runtime": null,
+      "spec_link": "docs/competitive-findings.md",
+      "plan_link": null,
+      "related_commits": null,
+      "ota_build_ids": null,
+      "blocker": null,
+      "local_paths": [],
+      "summary": "Let a couple remove a match they no longer want in contention.",
+      "notion_page_id": "36aa1a25-8916-8196-8f3e-c6dffbffd39c"
+    },
+    {
+      "key": "feat-pronunciation",
+      "title": "Competitor gap: pronunciation",
+      "status": "Backlog",
+      "subproject": "Web",
+      "priority": "P3",
+      "type": [
+        "Feature"
+      ],
+      "runtime": null,
+      "spec_link": "docs/competitive-findings.md",
+      "plan_link": null,
+      "related_commits": null,
+      "ota_build_ids": null,
+      "blocker": null,
+      "local_paths": [],
+      "summary": "Show pronunciation for names — a frequently requested competitor feature.",
+      "notion_page_id": "36aa1a25-8916-81fc-9302-fbac52f16dcc"
+    }
+  ]
+}
