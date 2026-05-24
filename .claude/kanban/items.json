@@ -234,7 +234,7 @@
     {
       "key": "tenancy-phase-a",
       "title": "Multi-couple tenancy refactor (Phase A)",
-      "status": "Building",
+      "status": "Live",
       "subproject": "Backend",
       "priority": "P0",
       "type": [
@@ -244,9 +244,9 @@
       "runtime": "PWA",
       "spec_link": "docs/onboarding-multicouple-plan.md",
       "plan_link": "docs/superpowers/plans/2026-05-24-multi-couple-tenancy-phase-a.md",
-      "related_commits": "4125b13",
+      "related_commits": "4125b13, 161a5ae, 7b6b88c",
       "ota_build_ids": null,
-      "blocker": "Paused — awaiting go-ahead before the first prod DB migration (Task 1). Backup + baseline done.",
+      "blocker": null,
       "local_paths": [
         "db/schema.ts",
         "db/migrate-tenancy.ts",
@@ -434,6 +434,28 @@
       "local_paths": [],
       "summary": "Show pronunciation for names — a frequently requested competitor feature.",
       "notion_page_id": "36aa1a25-8916-81fc-9302-fbac52f16dcc"
+    },
+    {
+      "key": "tenancy-phase-a-contract",
+      "title": "Phase A contract — drop user_slug / app_state",
+      "status": "Backlog",
+      "subproject": "Backend",
+      "priority": "P2",
+      "type": [
+        "Tech debt"
+      ],
+      "runtime": "PWA",
+      "spec_link": null,
+      "plan_link": "docs/superpowers/plans/2026-05-24-multi-couple-tenancy-phase-a.md",
+      "related_commits": null,
+      "ota_build_ids": null,
+      "blocker": "Gated: run only after the member_id deploy is confirmed stable in prod. Keeps user_slug as a rollback path until then.",
+      "local_paths": [
+        "db/schema.ts",
+        "db/migrations/"
+      ],
+      "summary": "Destructive cleanup after the member_id switch: drop user_slug + app_state, member_id NOT NULL, contract indexes/enum. Idempotent DDL (snapshots stale). Recoverable via backup but irreversible in place.",
+      "notion_page_id": "36aa1a25-8916-81fc-8e80-da271acc71b4"
     }
   ]
 }
