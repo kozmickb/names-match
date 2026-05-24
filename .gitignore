@@ -48,3 +48,9 @@ graphify-out/
 next-env.d.ts
 
 .vercel
+
+# Kanban runtime artifacts (managed by .claude/kanban/)
+.claude/kanban/touched.log
+.claude/kanban/_seed-*
+.claude/kanban/*.tmp.json
+.claude/kanban/.stop-cookie
