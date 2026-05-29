@@ -34,8 +34,24 @@ function vibrate(ms: number) {
   }
 }
 
+// Names this device has already decided on, surviving SwipeStack remounts within
+// one page load. The tabs (/swipe, /matches, /tournament) are separate routes, so
+// switching tab unmounts SwipeStack and would otherwise wipe the in-memory guard —
+// re-serving a swipe whose POST is still committing as if it were new. Keyed per
+// identity so karo/lucy on a shared device never inherit each other's set.
+const sessionSwipedBySlug = new Map<string, Set<number>>();
+function sessionSwipedSet(slug: string | null | undefined): Set<number> {
+  const key = slug ?? "_";
+  let set = sessionSwipedBySlug.get(key);
+  if (!set) {
+    set = new Set<number>();
+    sessionSwipedBySlug.set(key, set);
+  }
+  return set;
+}
+
 export function SwipeStack() {
-  const { surname } = useUser();
+  const { surname, user } = useUser();
   const [queue, setQueue] = useState<NameItem[]>([]);
   const [total, setTotal] = useState<number | null>(null);
   const [shuffled, setShuffled] = useState(false);
@@ -44,7 +60,11 @@ export function SwipeStack() {
   const [matchName, setMatchName] = useState<NameItem | null>(null);
   const fetchingRef = useRef(false);
   const seedRef = useRef<number | null>(null);
-  const swipedIdsRef = useRef<Set<number>>(new Set());
+  // The initializer binds to the right set on every mount: context `user` persists
+  // across route changes, so on a tab-switch remount this is already the live slug
+  // and the guard keeps prior (incl. still-committing) swipes. The effect below
+  // only rebinds for an in-place identity switch.
+  const swipedIdsRef = useRef<Set<number>>(sessionSwipedSet(user));
   const [hasSwipes, setHasSwipes] = useState(false);
   const [undoBusy, setUndoBusy] = useState(false);
   const [metaCache, setMetaCache] = useState<Record<number, Meta>>({});
@@ -87,6 +107,12 @@ export function SwipeStack() {
   useEffect(() => {
     fetchMore();
   }, [fetchMore]);
+
+  // Rebind the guard if the active identity changes in place (e.g. switched in
+  // Settings without a remount), so one partner's set never leaks to the other.
+  useEffect(() => {
+    swipedIdsRef.current = sessionSwipedSet(user);
+  }, [user]);
 
   useEffect(() => {
     if (!loading && queue.length > 0 && queue.length < 5 && !exhausted) {
