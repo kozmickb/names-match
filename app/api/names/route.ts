@@ -44,22 +44,27 @@ export async function GET(request: Request) {
     ? sql`hashtext(n.id::text || ':' || ${seed}::text)`
     : sql`n.id`;
 
-  // Auto-pass spelling variants of names this member has REJECTED. Interim
-  // heuristic (Phase 1 of variant grouping, see docs plan 2026-05-29): a shared
-  // double-metaphone code groups true spelling families (Mallory/Mallorie/Malorie,
-  // Sofia/Sophia/Sophie), and levenshtein <= 2 keeps phonetic collisions out
-  // (Miller also codes MLR but is 3 edits away). Pass-only so liking a name leaves
-  // its other spellings in the deck to compare. Phase 2 replaces this with a
-  // curated names.variant_group key.
+  // Auto-pass spelling variants of names this member has REJECTED (pass-only, so
+  // liking a name leaves its other spellings in the deck to compare). Primary
+  // signal is the curated names.variant_group key (db:cluster-variants groups
+  // Mallory/Mallorie/Malorie, Sofia/Sophia/Sophie, Catherine/Katherine/Kathryn).
+  // For names not yet grouped (freshly generated before assignVariantGroups runs)
+  // fall back to the phonetic heuristic: shared double-metaphone + levenshtein <= 2.
   const variantsFilter = autoPass
     ? sql`and not exists (
         select 1 from swipes sv
         join names nv on nv.id = sv.name_id
         where sv.member_id = ${member.id}
           and sv.decision = 'pass'
-          and dmetaphone(nv.name) = dmetaphone(n.name)
-          and dmetaphone(n.name) <> ''
-          and levenshtein(lower(nv.name), lower(n.name)) <= 2
+          and (
+            (nv.variant_group is not null and nv.variant_group = n.variant_group)
+            or (
+              (nv.variant_group is null or n.variant_group is null)
+              and dmetaphone(nv.name) = dmetaphone(n.name)
+              and dmetaphone(n.name) <> ''
+              and levenshtein(lower(nv.name), lower(n.name)) <= 2
+            )
+          )
       )`
     : sql``;
 

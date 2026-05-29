@@ -16,17 +16,25 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
   }
 
   // Same rule as the deck's auto-pass variant filter (see app/api/names/route.ts)
-  // so the "Also spelled" list matches exactly what rejecting this name hides.
+  // so the "Also spelled" list matches exactly what rejecting this name hides:
+  // the curated variant_group key, with a phonetic heuristic fallback for names
+  // not yet grouped.
   const rows = (await db.execute<{ id: number; name: string }>(sql`
     with target as (
-      select id, name from names where id = ${nameId}
+      select id, name, variant_group from names where id = ${nameId}
     )
     select n.id, n.name
     from names n, target t
     where n.id <> t.id
-      and dmetaphone(n.name) = dmetaphone(t.name)
-      and dmetaphone(t.name) <> ''
-      and levenshtein(lower(n.name), lower(t.name)) <= 2
+      and (
+        (t.variant_group is not null and n.variant_group = t.variant_group)
+        or (
+          (t.variant_group is null or n.variant_group is null)
+          and dmetaphone(n.name) = dmetaphone(t.name)
+          and dmetaphone(t.name) <> ''
+          and levenshtein(lower(n.name), lower(t.name)) <= 2
+        )
+      )
     order by n.name
     limit 5
   `)) as unknown as Array<{ id: number; name: string }>;
