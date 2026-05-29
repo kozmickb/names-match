@@ -456,6 +456,31 @@
       ],
       "summary": "Destructive cleanup after the member_id switch: drop user_slug + app_state, member_id NOT NULL, contract indexes/enum. Idempotent DDL (snapshots stale). Recoverable via backup but irreversible in place.",
       "notion_page_id": "36aa1a25-8916-81fc-8e80-da271acc71b4"
+    },
+    {
+      "key": "variant-grouping",
+      "title": "Variant grouping — auto-pass all spellings of a rejected name",
+      "status": "Building",
+      "subproject": "Backend",
+      "priority": "P1",
+      "type": [
+        "Bug"
+      ],
+      "runtime": "PWA",
+      "spec_link": null,
+      "plan_link": "docs/superpowers/plans/2026-05-29-variant-grouping.md",
+      "related_commits": "0e09b90",
+      "ota_build_ids": null,
+      "blocker": null,
+      "local_paths": [
+        "app/api/names/route.ts",
+        "app/api/names/[id]/variants/route.ts",
+        "db/cluster-variants.ts",
+        "lib/enrich-persist.ts",
+        "db/schema.ts"
+      ],
+      "summary": "Reject a name -> hide all its spellings. Phase 1 (Live): dmetaphone + lev<=2 pass-only. Phase 2 (Building): curated names.variant_group key via db:cluster-variants (dmetaphone buckets + Claude partition), used by deck filter, variants endpoint, and new-name creation with heuristic fallback.",
+      "notion_page_id": "36fa1a25-8916-8103-a97b-e8b43fb36f35"
     }
   ]
 }

@@ -50,6 +50,10 @@ export const names = pgTable("names", {
   popularityFetchedAt: timestamp("popularity_fetched_at", { withTimezone: true }),
   gender: text("gender"),
   originGroup: text("origin_group"),
+  // Canonical spelling-variant key: all spellings of one name share it
+  // (e.g. Mallory/Mallorie/Malorie). Backfilled by db:cluster-variants;
+  // drives pass-only auto-pass of variants. Null until clustered.
+  variantGroup: text("variant_group"),
 });
 
 export const userProfiles = pgTable("user_profiles", {

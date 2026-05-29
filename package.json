@@ -14,6 +14,7 @@
     "db:import": "tsx db/import-names.ts",
     "db:import-ons": "tsx db/import-ons.ts",
     "db:group-origins": "tsx db/group-origins.ts",
+    "db:cluster-variants": "tsx db/cluster-variants.ts",
     "db:push": "drizzle-kit push"
   },
   "dependencies": {
