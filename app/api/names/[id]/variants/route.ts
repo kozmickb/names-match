@@ -15,6 +15,8 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
     return Response.json({ error: "invalid id" }, { status: 400 });
   }
 
+  // Same rule as the deck's auto-pass variant filter (see app/api/names/route.ts)
+  // so the "Also spelled" list matches exactly what rejecting this name hides.
   const rows = (await db.execute<{ id: number; name: string }>(sql`
     with target as (
       select id, name from names where id = ${nameId}
@@ -22,8 +24,9 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
     select n.id, n.name
     from names n, target t
     where n.id <> t.id
-      and abs(length(n.name) - length(t.name)) <= 1
-      and levenshtein(lower(n.name), lower(t.name)) <= 1
+      and dmetaphone(n.name) = dmetaphone(t.name)
+      and dmetaphone(t.name) <> ''
+      and levenshtein(lower(n.name), lower(t.name)) <= 2
     order by n.name
     limit 5
   `)) as unknown as Array<{ id: number; name: string }>;

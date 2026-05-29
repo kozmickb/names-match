@@ -44,13 +44,22 @@ export async function GET(request: Request) {
     ? sql`hashtext(n.id::text || ':' || ${seed}::text)`
     : sql`n.id`;
 
+  // Auto-pass spelling variants of names this member has REJECTED. Interim
+  // heuristic (Phase 1 of variant grouping, see docs plan 2026-05-29): a shared
+  // double-metaphone code groups true spelling families (Mallory/Mallorie/Malorie,
+  // Sofia/Sophia/Sophie), and levenshtein <= 2 keeps phonetic collisions out
+  // (Miller also codes MLR but is 3 edits away). Pass-only so liking a name leaves
+  // its other spellings in the deck to compare. Phase 2 replaces this with a
+  // curated names.variant_group key.
   const variantsFilter = autoPass
     ? sql`and not exists (
         select 1 from swipes sv
         join names nv on nv.id = sv.name_id
         where sv.member_id = ${member.id}
-          and abs(length(nv.name) - length(n.name)) <= 1
-          and levenshtein(lower(nv.name), lower(n.name)) <= 1
+          and sv.decision = 'pass'
+          and dmetaphone(nv.name) = dmetaphone(n.name)
+          and dmetaphone(n.name) <> ''
+          and levenshtein(lower(nv.name), lower(n.name)) <= 2
       )`
     : sql``;
 
