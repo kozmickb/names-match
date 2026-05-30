@@ -56,14 +56,22 @@ export const names = pgTable("names", {
   variantGroup: text("variant_group"),
 });
 
-export const userProfiles = pgTable("user_profiles", {
-  userSlug: userSlugEnum("user_slug").primaryKey(),
-  memberId: uuid("member_id").references(() => members.id, { onDelete: "cascade" }),
-  emoji: text("emoji").notNull().default("🧑"),
-  autoPassVariants: boolean("auto_pass_variants").notNull().default(false),
-  genderFilter: text("gender_filter").notNull().default("all"),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
-});
+export const userProfiles = pgTable(
+  "user_profiles",
+  {
+    // Legacy slug kept nullable for the seed couple; member_id is now the key so
+    // new couples (no legacy slug) can own a profile. Contract phase drops the column.
+    userSlug: userSlugEnum("user_slug"),
+    memberId: uuid("member_id").notNull().references(() => members.id, { onDelete: "cascade" }),
+    emoji: text("emoji").notNull().default("🧑"),
+    autoPassVariants: boolean("auto_pass_variants").notNull().default(false),
+    genderFilter: text("gender_filter").notNull().default("all"),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (t) => ({
+    memberUniq: uniqueIndex("user_profiles_member_uniq").on(t.memberId),
+  })
+);
 
 export const tournamentVotes = pgTable(
   "tournament_votes",
@@ -136,6 +144,7 @@ export const swipes = pgTable(
   },
   (t) => ({
     uniq: uniqueIndex("swipes_user_name_uniq").on(t.userSlug, t.nameId),
+    memberNameUniq: uniqueIndex("swipes_member_name_uniq").on(t.memberId, t.nameId),
     byUser: index("swipes_user_idx").on(t.userSlug),
     byName: index("swipes_name_idx").on(t.nameId),
     byMember: index("swipes_member_idx").on(t.memberId),
@@ -156,7 +165,7 @@ export const knockouts = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   },
   (t) => ({
-    genderUniq: uniqueIndex("knockout_gender_uniq").on(t.gender),
+    coupleGenderUniq: uniqueIndex("knockout_couple_gender_uniq").on(t.coupleId, t.gender),
   })
 );
 

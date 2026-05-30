@@ -1,5 +1,6 @@
 import { db, schema } from "@/db/client";
 import { readMember, unauthorized } from "@/lib/api";
+import { isUserSlug } from "@/lib/user";
 import { eq, sql } from "drizzle-orm";
 
 export const dynamic = "force-dynamic";
@@ -20,7 +21,7 @@ export async function POST(req: Request) {
 
   await db
     .insert(schema.userProfiles)
-    .values({ userSlug: member.legacySlug as "karo" | "lucy", memberId: member.id, autoPassVariants: body.enabled })
+    .values({ userSlug: isUserSlug(member.legacySlug) ? member.legacySlug : null, memberId: member.id, autoPassVariants: body.enabled })
     .onConflictDoUpdate({
       target: schema.userProfiles.memberId,
       set: { autoPassVariants: body.enabled, updatedAt: sql`now()` },
