@@ -1,5 +1,6 @@
 import { db, schema } from "@/db/client";
 import { readMember, unauthorized } from "@/lib/api";
+import { isUserSlug } from "@/lib/user";
 import { eq, sql } from "drizzle-orm";
 
 export const dynamic = "force-dynamic";
@@ -36,7 +37,7 @@ export async function POST(req: Request) {
 
   await db
     .insert(schema.userProfiles)
-    .values({ userSlug: member.legacySlug as "karo" | "lucy", memberId: member.id, genderFilter: body.filter })
+    .values({ userSlug: isUserSlug(member.legacySlug) ? member.legacySlug : null, memberId: member.id, genderFilter: body.filter })
     .onConflictDoUpdate({
       target: schema.userProfiles.memberId,
       set: { genderFilter: body.filter, updatedAt: sql`now()` },
