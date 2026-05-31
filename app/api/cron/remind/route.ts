@@ -11,6 +11,13 @@ const STALE_HOURS = 24;
 
 export async function GET() {
   const cronSecret = process.env.CRON_SECRET;
+  // Fail closed in production: this endpoint enumerates members and fires push, so
+  // it must never be reachable unauthenticated. Vercel attaches the Bearer
+  // automatically once CRON_SECRET is set in the project env (until then,
+  // scheduled reminders are paused by design rather than left wide open).
+  if (process.env.NODE_ENV === "production" && !cronSecret) {
+    return Response.json({ error: "cron not configured" }, { status: 503 });
+  }
   if (cronSecret) {
     const h = await headers();
     const auth = h.get("authorization");
