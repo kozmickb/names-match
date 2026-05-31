@@ -70,9 +70,7 @@ export function SwipeStack() {
   const [metaCache, setMetaCache] = useState<Record<number, Meta>>({});
   const [variantsCache, setVariantsCache] = useState<Record<number, Variant[]>>({});
   const [popCache, setPopCache] = useState<Record<number, Popularity>>({});
-  const metaInflightRef = useRef<Set<number>>(new Set());
-  const variantsInflightRef = useRef<Set<number>>(new Set());
-  const popInflightRef = useRef<Set<number>>(new Set());
+  const detailInflightRef = useRef<Set<number>>(new Set());
 
   const fetchMore = useCallback(async (reset = false) => {
     if (fetchingRef.current) return;
@@ -240,36 +238,21 @@ export function SwipeStack() {
 
   useEffect(() => {
     if (!top) return;
-    if (!metaCache[top.id] && !metaInflightRef.current.has(top.id)) {
-      metaInflightRef.current.add(top.id);
-      apiFetch(`/api/names/${top.id}/meaning`)
-        .then((r) => (r.ok ? r.json() : null))
-        .then((j: Meta | null) => {
-          if (j) setMetaCache((c) => ({ ...c, [top.id]: j }));
-        })
-        .catch(() => {})
-        .finally(() => metaInflightRef.current.delete(top.id));
-    }
-    if (!variantsCache[top.id] && !variantsInflightRef.current.has(top.id)) {
-      variantsInflightRef.current.add(top.id);
-      apiFetch(`/api/names/${top.id}/variants`)
-        .then((r) => (r.ok ? r.json() : null))
-        .then((j: { variants: Variant[] } | null) => {
-          if (j) setVariantsCache((c) => ({ ...c, [top.id]: j.variants }));
-        })
-        .catch(() => {})
-        .finally(() => variantsInflightRef.current.delete(top.id));
-    }
-    if (!popCache[top.id] && !popInflightRef.current.has(top.id)) {
-      popInflightRef.current.add(top.id);
-      apiFetch(`/api/names/${top.id}/popularity`)
-        .then((r) => (r.ok ? r.json() : null))
-        .then((j: Popularity | null) => {
-          if (j) setPopCache((c) => ({ ...c, [top.id]: j }));
-        })
-        .catch(() => {})
-        .finally(() => popInflightRef.current.delete(top.id));
-    }
+    const id = top.id;
+    // One request per card for meaning + variants + popularity (was three).
+    if (metaCache[id] && variantsCache[id] && popCache[id]) return;
+    if (detailInflightRef.current.has(id)) return;
+    detailInflightRef.current.add(id);
+    apiFetch(`/api/names/${id}/detail`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j: { meta: Meta; variants: Variant[]; popularity: Popularity } | null) => {
+        if (!j) return;
+        if (j.meta) setMetaCache((c) => ({ ...c, [id]: j.meta }));
+        if (j.variants) setVariantsCache((c) => ({ ...c, [id]: j.variants }));
+        if (j.popularity) setPopCache((c) => ({ ...c, [id]: j.popularity }));
+      })
+      .catch(() => {})
+      .finally(() => detailInflightRef.current.delete(id));
   }, [top, metaCache, variantsCache, popCache]);
 
   return (
@@ -393,6 +376,9 @@ function FrontCard({
   const passOpacity = useTransform(x, [-100, -30], [1, 0]);
 
   const fly = (direction: "like" | "pass") => {
+    // Nudge x so the exit animation flies the correct way even for button taps,
+    // where the card was never dragged and x is still 0 (which read as "right").
+    x.set(direction === "pass" ? -1 : 1);
     onSwipe(item, direction);
   };
 
