@@ -92,7 +92,6 @@
       "blocker": null,
       "local_paths": [
         "app/api/tournament/pair/route.ts",
-        "app/api/tournament/results/route.ts",
         "app/api/tournament/vote/route.ts"
       ],
       "summary": "Phase 1: turned the league table into a tournament hub with head-to-head duel pairing and progress tracking.",
@@ -460,7 +459,7 @@
     {
       "key": "variant-grouping",
       "title": "Variant grouping — auto-pass all spellings of a rejected name",
-      "status": "Building",
+      "status": "Live",
       "subproject": "Backend",
       "priority": "P1",
       "type": [
@@ -469,7 +468,7 @@
       "runtime": "PWA",
       "spec_link": null,
       "plan_link": "docs/superpowers/plans/2026-05-29-variant-grouping.md",
-      "related_commits": "0e09b90",
+      "related_commits": "0e09b90, 8709d7a",
       "ota_build_ids": null,
       "blocker": null,
       "local_paths": [
@@ -481,6 +480,165 @@
       ],
       "summary": "Reject a name -> hide all its spellings. Phase 1 (Live): dmetaphone + lev<=2 pass-only. Phase 2 (Building): curated names.variant_group key via db:cluster-variants (dmetaphone buckets + Claude partition), used by deck filter, variants endpoint, and new-name creation with heuristic fallback.",
       "notion_page_id": "36fa1a25-8916-8103-a97b-e8b43fb36f35"
+    },
+    {
+      "key": "tenancy-correctness-landmines",
+      "title": "Tenancy correctness landmines (knockout index + new-couple profile)",
+      "status": "Live",
+      "subproject": "Backend",
+      "priority": "P1",
+      "type": [
+        "Bug"
+      ],
+      "runtime": "PWA",
+      "spec_link": null,
+      "plan_link": "docs/superpowers/plans/2026-05-29-variant-grouping.md",
+      "related_commits": "364b595",
+      "ota_build_ids": null,
+      "blocker": null,
+      "local_paths": [
+        "db/schema.ts",
+        "app/api/profile/route.ts",
+        "app/api/profile/gender-filter/route.ts",
+        "app/api/profile/auto-pass-variants/route.ts",
+        "app/api/tournament/knockout/route.ts"
+      ],
+      "summary": "Roadmap audit fix (PR #15): knockout unique index -> (couple_id,gender); new-couple profile crash fixed (user_slug PK relaxed, member_id is the key, routes null-safe). DDL applied to prod + schema.ts reconciled.",
+      "notion_page_id": "370a1a25-8916-818a-aab5-fe881b812c5a"
+    },
+    {
+      "key": "observability-config-hardening",
+      "title": "Observability + config-hardening floor (Sentry, error pages, secrets, cron, headers)",
+      "status": "Building",
+      "subproject": "Backend",
+      "priority": "P1",
+      "type": [
+        "Infra"
+      ],
+      "runtime": "PWA",
+      "spec_link": null,
+      "plan_link": null,
+      "related_commits": "444f626",
+      "ota_build_ids": null,
+      "blocker": "Remaining: install @sentry/nextjs (needs a Sentry DSN); set AUTH_SECRET + CRON_SECRET in Vercel (cron reminders paused until CRON_SECRET set).",
+      "local_paths": [
+        "next.config.ts",
+        "app/error.tsx",
+        "app/global-error.tsx",
+        "app/not-found.tsx",
+        "app/api/cron/remind/route.ts",
+        "lib/auth.ts"
+      ],
+      "summary": "Tier 1.5 floor BEFORE tenancy/auth refactors: set AUTH_SECRET+CRON_SECRET fail-closed; require cron Bearer; @sentry/nextjs + error/global-error/not-found pages + ErrorBoundary; security headers in next.config.ts.",
+      "notion_page_id": "370a1a25-8916-8135-8923-d6de379fd6a0"
+    },
+    {
+      "key": "defensive-launch-batch",
+      "title": "Defensive launch batch — domains + store names + TM + prod secrets",
+      "status": "Backlog",
+      "subproject": "Backend",
+      "priority": "P1",
+      "type": [
+        "Marketing",
+        "Infra"
+      ],
+      "runtime": "PWA",
+      "spec_link": null,
+      "plan_link": null,
+      "related_commits": null,
+      "ota_build_ids": null,
+      "blocker": null,
+      "local_paths": [],
+      "summary": "Tier 0 (mostly Karo action): buy lullaname.com/.app; reserve App Store + Play names; file TM ITU (class 9+42); set AUTH_SECRET+CRON_SECRET in Vercel. Irreversible if the name leaks.",
+      "notion_page_id": "370a1a25-8916-8195-9db0-c1b1ca9c3e8a"
+    },
+    {
+      "key": "posthog-instrumentation",
+      "title": "PostHog product analytics instrumentation",
+      "status": "Backlog",
+      "subproject": "Backend",
+      "priority": "P1",
+      "type": [
+        "Infra"
+      ],
+      "runtime": "PWA",
+      "spec_link": null,
+      "plan_link": null,
+      "related_commits": null,
+      "ota_build_ids": null,
+      "blocker": null,
+      "local_paths": [],
+      "summary": "Tier 3: PostHog connected but app emits no events. Instrument partner_joined, swipe+deck_exhausted (churn), champion_crowned (north-star/review), ai_rate_limited; id by member_id, group by couple_id. Before day-1 store traffic.",
+      "notion_page_id": "370a1a25-8916-8186-a2b7-f418f4c14773"
+    },
+    {
+      "key": "lullaname-brand-apply",
+      "title": "Apply Lullaname brand across the app",
+      "status": "Backlog",
+      "subproject": "Web",
+      "priority": "P1",
+      "type": [
+        "Marketing"
+      ],
+      "runtime": "PWA",
+      "spec_link": null,
+      "plan_link": null,
+      "related_commits": null,
+      "ota_build_ids": null,
+      "blocker": null,
+      "local_paths": [
+        "app/layout.tsx",
+        "app/manifest.ts",
+        "components/swipe-stack.tsx"
+      ],
+      "summary": "Tier 3: still Names Match amber. Apply locked Lullaname identity (Quote & Dot icon, cream/terracotta/butter, soft-serif wordmark). Gate after domain purchase.",
+      "notion_page_id": "370a1a25-8916-8151-87b2-cb5b33911f8c"
+    },
+    {
+      "key": "decided-together-share",
+      "title": "Surface 'decided together' + shareable champion card",
+      "status": "Backlog",
+      "subproject": "Web",
+      "priority": "P2",
+      "type": [
+        "Feature"
+      ],
+      "runtime": "PWA",
+      "spec_link": null,
+      "plan_link": null,
+      "related_commits": null,
+      "ota_build_ids": null,
+      "blocker": null,
+      "local_paths": [
+        "lib/standings.ts",
+        "app/api/tournament/pair/route.ts",
+        "components/match-overlay.tsx"
+      ],
+      "summary": "Tier 4 moat: per-pair consensus + settle-disagreements filter + partner-pick reveal; We-chose share card via vercel-og at champion; members.last_seen_at presence primitive.",
+      "notion_page_id": "370a1a25-8916-8183-9ac0-fab6478020de"
+    },
+    {
+      "key": "perf-swipe-quickwins",
+      "title": "Perf/UX quick-wins: one /detail request per card + exit fix + pool + cleanup",
+      "status": "Live",
+      "subproject": "Web",
+      "priority": "P2",
+      "type": [
+        "Tech debt"
+      ],
+      "runtime": "PWA",
+      "spec_link": null,
+      "plan_link": null,
+      "related_commits": "68687c7",
+      "ota_build_ids": null,
+      "blocker": null,
+      "local_paths": [
+        "app/api/names/[id]/detail/route.ts",
+        "components/swipe-stack.tsx",
+        "db/client.ts"
+      ],
+      "summary": "Roadmap perf/UX wins (PR #16): /detail consolidates 3 per-card GETs into 1; swipe exit animation flies the correct way on taps; prod DB pool memoized; dead /api/tournament/results deleted (standings dedup).",
+      "notion_page_id": "371a1a25-8916-81f7-8d97-f52867302b89"
     }
   ]
 }
